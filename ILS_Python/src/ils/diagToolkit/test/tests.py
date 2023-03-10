@@ -1129,8 +1129,8 @@ def test18a(db):
     postDiagnosisEntry(project, applicationName, 'FT_Family1_2', 'FT_FD1_2_5', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
     return applicationName
 
-# Simultaneously post two text recommendations
-def test18b(db):
+# Simultaneously post two text recommendations with different priorities
+def test18b1(db):
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
     applicationName='FINAL_TEST_1'
     appId=insertApp1(db)
@@ -1138,6 +1138,34 @@ def test18b(db):
     T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, db=db)
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, db=db)
     insertApp1Families(appId,T1Id,T2Id,T3Id, db=db)
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'FT_Family1_2', 'FT_FD1_2_6', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
+    postDiagnosisEntry(project, applicationName, 'FT_Family1_2', 'FT_FD1_2_5', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
+    return applicationName
+
+# Simultaneously post two text recommendations with the same priorities
+def test18b2(db):
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    applicationName='FINAL_TEST_1'
+    appId=insertApp1(db)
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, db=db)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, db=db)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, db=db)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, db=db,  FD125Priority=5.0, FD126Priority=5.0)
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'FT_Family1_2', 'FT_FD1_2_6', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
+    postDiagnosisEntry(project, applicationName, 'FT_Family1_2', 'FT_FD1_2_5', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
+    return applicationName
+
+# Simultaneously post two text recommendations with the same priorities
+def test18b3(db):
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    applicationName='FINAL_TEST_1'
+    appId=insertApp1(db)
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, db=db)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, db=db)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, db=db)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, db=db,  FD125Priority=5.0, FD126Priority=5.0, postProcessingCallback='ils.diagToolkit.test.calculationMethods.postDownloadSpecialActions')
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'FT_Family1_2', 'FT_FD1_2_6', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
     postDiagnosisEntry(project, applicationName, 'FT_Family1_2', 'FT_FD1_2_5', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)

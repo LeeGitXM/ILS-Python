@@ -33,7 +33,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.state = "UNKNOWN"
         self.handler.setAlerterClass(self.getClassName())
         self.log =getLogger(__name__)
-        self.log.infof("Instantiating an ILS Final Diagnosis...")
+        self.log.infof("Instantiating a Python Final Diagnosis...")
     
     # Set attributes custom to this class
     def initialize(self):

@@ -64,7 +64,7 @@ def save(applicationUUID):
     
     from system.ils.blt.diagram import getApplicationName
     applicationName = getApplicationName(applicationUUID)
-    log.tracef("...applicationName from system.ils.blt.diagram.getApplicationName: %s", applicationName)
+    log.infof("...applicationName from system.ils.blt.diagram.getApplicationName: %s", applicationName)
     
     SQL = "select ApplicationId from DtApplication where ApplicationUUID = '%s'" % (applicationUUID)
     applicationId = system.db.runScalarQuery(SQL, db)

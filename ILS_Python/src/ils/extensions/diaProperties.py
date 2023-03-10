@@ -45,17 +45,17 @@ def save(diagramUUID):
     
     ''' This returns the actual diagram, from it we can get the process blocks '''
     diagram = blockExecutionController.getDiagram(diagramUUID)
-    log.tracef("Diagram: %s - %s", str(diagram), type(diagram).__name__)
+    log.infof("  Diagram: %s - %s", str(diagram), type(diagram).__name__)
     
     applicationName  = controllerRequestHandler.getApplicationName(diagramUUID)
     familyName = controllerRequestHandler.getFamilyName(diagramUUID)
-    log.tracef("  Application Name: %s", applicationName)
-    log.tracef("  Family Name: %s", familyName)
+    log.infof("  Application Name: %s", applicationName)
+    log.infof("  Family Name: %s", familyName)
     
     if not(diagram == None):
         diagramName=diagram.getName()
 
-        log.tracef("...saving diagram  <%s> <%s>", diagramName, diagramUUID)
+        log.infof("...saving diagram  <%s> <%s>", diagramName, diagramUUID)
         database = controllerRequestHandler.getDatabaseForUUID(diagramUUID)
         
         # A database of NONE indicates that the diagram is disabled

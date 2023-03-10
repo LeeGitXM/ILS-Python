@@ -398,7 +398,7 @@ def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes,
     endDate = system.date.addMinutes(system.date.now(), -1)
     endDate = system.date.now()
     
-    log.tracef("Calculating the %s for %s over the past %s minutes", aggregationMode, str(fullTagPaths), str(timeIntervalMinutes))
+    log.infof("Calculating the %s for %s over the past %s minutes", aggregationMode, str(fullTagPaths), str(timeIntervalMinutes))
     
     ds = system.tag.queryTagCalculations(
         paths=fullTagPaths, 
@@ -411,7 +411,9 @@ def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes,
     
     badValue = False
     for i in range(0,len(tagPaths)):
+        print "Tag #", i
         val = ds.getValueAt(i, 1)
+        print "   Val: ", val
         if val == None:
             badValue = True
             log.warnf("Unable to collect %s for %s", aggregationMode, tagPaths[i])
@@ -420,6 +422,7 @@ def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes,
             else:
                 badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
 
+    print "Returning ", badValue, ds, badValueTxt
     return badValue, ds, badValueTxt
 
 '''

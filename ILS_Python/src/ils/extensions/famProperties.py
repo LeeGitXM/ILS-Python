@@ -69,21 +69,21 @@ def save(familyUUID):
     log.infof("In %s.save()", __name__)
     
     db = handler.getProductionDatabase()
-    log.tracef("...db: %s", db)
+    log.infof("...db: %s", db)
     
     from system.ils.blt.diagram import getFamilyName, getApplicationName
     familyName = getFamilyName(familyUUID)
-    log.tracef("...familyName: %s", familyName)
+    log.infof("...familyName: %s", familyName)
     
     applicationName = getApplicationName(familyUUID)
-    log.tracef("...applicationName: %s", applicationName)
+    log.infof("...applicationName: %s", applicationName)
     
     applicationId = fetchApplicationId(applicationName, db)
-    log.tracef("...the id for <%s> is %s", applicationName, str(applicationId))
+    log.infof("...the id for <%s> is %s", applicationName, str(applicationId))
     
     SQL = "select FamilyId from DtFamily where familyUUID = '%s'" % (familyUUID)
     familyId = system.db.runScalarQuery(SQL, database=db)
-    log.tracef("...familyName from UUID: %s", str(familyId))
+    log.infof("...familyName from UUID: %s", str(familyId))
     
     if familyId == None:
         '''
@@ -92,7 +92,7 @@ def save(familyUUID):
         '''
         SQL = "select familyId from DtFamily where applicationId = %d and FamilyName = '%s'" % (applicationId, familyName)
         familyId = system.db.runScalarQuery(SQL, database=db)
-        log.tracef("...familyName from name: %s", str(familyId))
+        log.infof("...familyName from name: %s", str(familyId))
         
         if familyId == None:
             SQL = "insert into DtFamily (ApplicationId, FamilyName, FamilyUUID, FamilyPriority) "\
