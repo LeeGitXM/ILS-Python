@@ -79,16 +79,16 @@ def refreshDiagramTree(rootContainer, db):
     diagramContainer.statusMessage = statusMessage
     
     rows = []
-    rows.append(["", ROOT_NODE, SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, WHITE, BLACK, "", RED])
+    rows.append(["", ROOT_NODE, SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, WHITE, BLACK, "", ""])
     for record in pds:
         fullDiagramName = record["DiagramName"]
         familyId = record["FamilyId"]
         parent, diagramName = parseResourcePath(fullDiagramName)
         parent = ROOT_NODE + "/" + parent 
         if familyId == None:
-            row = [parent,diagramName,DIAGRAM_ICON,WHITE,BLACK,fullDiagramName,"","",DIAGRAM_ICON,WHITE,BLACK,"",RED]
+            row = [parent,diagramName,DIAGRAM_ICON,WHITE,BLACK,fullDiagramName,"","",DIAGRAM_ICON,WHITE,BLACK,"",""]
         else:
-            row = [parent,diagramName,DIAGRAM_REFERENCED_ICON,WHITE,BLACK,fullDiagramName,"","",DIAGRAM_REFERENCED_ICON,WHITE,BLACK,"",RED]
+            row = [parent,diagramName,DIAGRAM_REFERENCED_ICON,WHITE,BLACK,fullDiagramName,"","",DIAGRAM_REFERENCED_ICON,WHITE,BLACK,"",""]
         rows.append(row)
     
     ''' Now add the Final Diagnosis '''
@@ -107,7 +107,7 @@ def refreshDiagramTree(rootContainer, db):
         fullDiagramName = record["DiagramName"]
         finalDiagnosisName = record["FinalDiagnosisName"]
 
-        row = [ROOT_NODE + "/" +fullDiagramName,finalDiagnosisName,FINAL_DIAGNOSIS_ICON,WHITE,BLACK,fullDiagramName + "-" + finalDiagnosisName,"","",FINAL_DIAGNOSIS_ICON,WHITE,BLACK,"",RED]
+        row = [ROOT_NODE + "/" +fullDiagramName,finalDiagnosisName,FINAL_DIAGNOSIS_ICON,WHITE,BLACK,fullDiagramName + "-" + finalDiagnosisName,"","",FINAL_DIAGNOSIS_ICON,WHITE,BLACK,"",""]
         rows.append(row)
     
     
@@ -122,12 +122,12 @@ def refreshHierarchyTreeCallback(rootContainer, db=""):
     
 def refreshHierarchyTree(rootContainer, db):
     rows = []
-    rows.append(["", ROOT_NODE, SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, WHITE, BLACK, "", RED])
+    rows.append(["", ROOT_NODE, SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, WHITE, BLACK, "", ""])
     
     applications = fetchApplications(db)
     for application in applications:
         applicationName = application["ApplicationName"]
-        rows.append([ROOT_NODE, applicationName, APPLICATION_ICON, WHITE, BLACK, "", "", "", APPLICATION_ICON, WHITE, BLACK, "", RED])
+        rows.append([ROOT_NODE, applicationName, APPLICATION_ICON, WHITE, BLACK, "", "", "", APPLICATION_ICON, WHITE, BLACK, "", ""])
         
     families = fetchFamilies(db)
     for family in families:
@@ -136,7 +136,7 @@ def refreshHierarchyTree(rootContainer, db):
         familyPriority = family["FamilyPriority"]
         familyTxt = appendPriority(familyName, familyPriority)
         applicationName = ROOT_NODE + "/" + applicationName
-        rows.append([applicationName, familyTxt, FAMILY_ICON, WHITE, BLACK, "", "", "", FAMILY_ICON, WHITE, BLACK, "", RED])
+        rows.append([applicationName, familyTxt, FAMILY_ICON, WHITE, BLACK, "", "", "", FAMILY_ICON, WHITE, BLACK, "", ""])
         
     diagrams = fetchDiagrams(db)
     for diagram in diagrams:
@@ -150,7 +150,7 @@ def refreshHierarchyTree(rootContainer, db):
         fullDiagramName = diagram["DiagramName"]
         tokens = fullDiagramName.split("/")
         diagramName = tokens[len(tokens)-1]
-        rows.append([ROOT_NODE + "/" + applicationName + "/" + familyTxt, diagramName, DIAGRAM_ICON, WHITE, BLACK, fullDiagramName, "", "", DIAGRAM_ICON, WHITE, BLACK, "", RED])
+        rows.append([ROOT_NODE + "/" + applicationName + "/" + familyTxt, diagramName, DIAGRAM_ICON, WHITE, BLACK, fullDiagramName, "", "", DIAGRAM_ICON, WHITE, BLACK, "", ""])
 
     FDs = fetchFinalDiagnosisList(db)
     for FD in FDs:
@@ -169,7 +169,7 @@ def refreshHierarchyTree(rootContainer, db):
         parentNode = ROOT_NODE + "/" + applicationName + "/" + familyTxt + "/" + diagramName
         log.infof("Adding an application with parent: <%s>", parentNode)
         fdText = appendPriority(fdName, fdPriority)
-        rows.append([parentNode, fdText, FINAL_DIAGNOSIS_ICON, WHITE, BLACK, fdName, "", "", FINAL_DIAGNOSIS_ICON, WHITE, BLACK, "", RED])
+        rows.append([parentNode, fdText, FINAL_DIAGNOSIS_ICON, WHITE, BLACK, fdName, "", "", FINAL_DIAGNOSIS_ICON, WHITE, BLACK, "", ""])
 
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
     ds = system.dataset.toDataSet(header, rows)
@@ -360,10 +360,12 @@ def insertDiagramCallback(event):
     row = hierarchyTreeWidget.selectedItem
     ds = hierarchyTreeWidget.data
     familyName = ds.getValueAt(row, "text")
+    familyName = stripPriority(familyName)
     path = ds.getValueAt(row, "path")
     applicationName = path[path.find("/")+1:]
+    log.infof("User selected family <%s> in application <%s>...", familyName, applicationName)
     familyId = fetchFamilyId(applicationName, familyName, db)
-    log.infof("User selected family <%s> in application <%s>", familyName, applicationName)
+    log.infof("...with family id: %s", str(familyId))    
     
     '''
     1) Update the database so that the diagram is a member of the family
