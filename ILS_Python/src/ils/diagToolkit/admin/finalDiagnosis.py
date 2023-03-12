@@ -18,11 +18,10 @@ def internalFrameOpened(rootContainer):
 
     log.infof("The database is: %s", database)
     
-    SQL = "select ApplicationName, FamilyName, FinalDiagnosisName, FamilyPriority, FinalDiagnosisPriority, Constant, "\
-        " Active, LastRecommendationTime, TimeOfMostRecentRecommendationImplementation, DiagramUUID, FinalDiagnosisUUID, "\
-        " ' ' State "\
+    SQL = "select ApplicationName, FamilyName, DiagramName, FinalDiagnosisName, FamilyPriority, FinalDiagnosisPriority, Constant, "\
+        " Active, LastRecommendationTime, TimeOfMostRecentRecommendationImplementation, ' ' State "\
         " from DtFinalDiagnosisView "\
-        " order by ApplicationName, FamilyName, FinalDiagnosisName"
+        " order by ApplicationName, FamilyName, DiagramName, FinalDiagnosisName"
     pds = system.db.runQuery(SQL, database)
     
     table = rootContainer.getComponent("Power Table")
@@ -31,8 +30,7 @@ def internalFrameOpened(rootContainer):
     rootContainer.getComponent("Last Updated").text = formatDateTime(getDate(),'MM/dd/yyyy HH:mm:ss')
 
 def runTest(rootContainer):
-    import system.ils.blt.diagram as diagram
-    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
+    from ils.blt.api import getBlockState
        
     log.infof("In %s.runTest()", __name__)
 
@@ -42,19 +40,14 @@ def runTest(rootContainer):
     
     row = 0
     for record in pds:
+        diagramName = record["DiagramName"]
         fdName = record["FinalDiagnosisName"]
-        fdUUID = record["FinalDiagnosisUUID"]
     
-        log.infof("Getting info for Final Diagnosis named: <%s> with id: <%s>", fdName, fdUUID)
-   
-        diagramDescriptor=diagram.getDiagramForBlock(fdUUID)
-        if diagramDescriptor == None:
-            status="Unable to locate the diagram"
-        else:
-            diagramId=diagramDescriptor.getId()
-            status = "Success"
-
-        ds= system.dataset.setValue(ds, row, "State", status)
+        log.infof("Getting info for Final Diagnosis <%s> on <%s>", fdName, diagramName)
+        blockState = getBlockState(diagramName, fdName)
+        log.infof("...%s", blockState)
+        
+        ds = system.dataset.setValue(ds, row, "State", blockState)
         row = row + 1
 
     table.data = ds
