@@ -58,7 +58,7 @@ def test(selectedRow, table, resultsTextArea):
     db = getDatabase()    
     
     calculationMethod = ds.getValueAt(selectedRow, 4)
-    if calculationMethod == "":
+    if calculationMethod in ["", None]:
         txt = "The selected Final Diagnosis <%s> does not have a calculation method!" % (finalDiagnosisName)
         resultsTextArea.text = txt
     
