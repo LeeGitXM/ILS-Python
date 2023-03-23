@@ -107,7 +107,7 @@ def refreshDiagramTree(rootContainer, db):
         fullDiagramName = record["DiagramName"]
         finalDiagnosisName = record["FinalDiagnosisName"]
 
-        row = [ROOT_NODE + "/" +fullDiagramName,finalDiagnosisName,FINAL_DIAGNOSIS_ICON,WHITE,BLACK,fullDiagramName + "-" + finalDiagnosisName,"","",FINAL_DIAGNOSIS_ICON,WHITE,BLACK,"",""]
+        row = [ROOT_NODE + "/" +fullDiagramName, finalDiagnosisName, FINAL_DIAGNOSIS_ICON, WHITE, BLACK, fullDiagramName + "-" + finalDiagnosisName, "" ,"" ,FINAL_DIAGNOSIS_ICON, WHITE, BLACK, "", ""]
         rows.append(row)
     
     
