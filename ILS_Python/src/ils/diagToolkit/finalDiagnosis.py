@@ -100,10 +100,10 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
     from ils.blt.api import setBlockState
     setBlockState(diagramName, finalDiagnosisName, "TRUE")
     
-    '''
-    I think that with the Ignition 8 migration that teh block state automatically propagates - Pete 9/8/22 
-    system.ils.blt.diagram.propagateBlockState(diagramUUID, finalDiagnosisUUID)
-    '''
+
+    # I think that with the Ignition 8 migration that teh block state automatically propagates - Pete 9/8/22 
+    # system.ils.blt.diagram.propagateBlockState(diagramUUID, finalDiagnosisUUID)
+
     
     notificationText, activeOutputs, postTextRecommendation, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)
     log.tracef("...back from manage!")

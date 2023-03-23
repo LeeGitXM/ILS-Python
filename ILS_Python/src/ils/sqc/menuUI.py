@@ -13,7 +13,7 @@ log = getLogger(__name__)
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)
     
-    database=readTag("[Client]Database").value
+    database=getDatabase()
     log.tracef("The database is: %s", database)
     
     # Populate the list of all consoles - the selected console is passed from the console window and should be in the list
@@ -33,14 +33,16 @@ def newPostSelected(rootContainer):
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
-    log.tracef("In %s.populateRepeater", __name__)
+    log.infof("In %s.populateRepeater", __name__)
     selectedPost = rootContainer.selectedPost
-    database=readTag("[Client]Database").value
+    database=getDatabase()
     log.tracef("The database is: %s and the selected post is: %s", database, str(selectedPost))
     
-    SQL = "Select SQCDiagnosisName, SQCDiagnosisLabel, Status, SQCDiagnosisUUID, SQCDiagnosisName as LabValueName,SQCDiagnosisName as LabValueDescription, SQCDiagnosisName as ButtonLabel "\
-        "from DtSQCDiagnosis SQC, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
-        "where SQC.FamilyId = F.FamilyId "\
+    SQL = "Select SQCDiagnosisName, SQCDiagnosisLabel, Status, SQCDiagnosisName as LabValueName, SQCDiagnosisName as LabValueDescription, "\
+        " SQCDiagnosisName as ButtonLabel, D.DiagramName "\
+        " from DtSQCDiagnosis SQC, DtDiagram D, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
+        " where SQC.DiagramId = D.DiagramId "\
+        " and D.FamilyId = F.FamilyId "\
         " and F.ApplicationId = A.ApplicationId "\
         " and A.UnitId = U. UnitId "\
         " and U.PostId = P.PostId "\
@@ -56,17 +58,17 @@ def populateRepeater(rootContainer):
     
     indexParameter = string.upper(readTag("Configuration/LabData/sqcPlotMenuIndexParameter").value)
     
-    from ils.sqc.plot import getLabValueNameFromDiagram
+    from ils.sqc.plot import getLabValueName
     row = 0
     for record in pds:
+        diagramName = record["DiagramName"]
         sqcDiagnosisName = record["SQCDiagnosisName"]
         sqcDiagnosisLabel = record["SQCDiagnosisLabel"]
-        sqcDiagnosisUUID = record["SQCDiagnosisUUID"]
         status =  record["Status"]
-        log.tracef("%s - %s", sqcDiagnosisName, status)
+        log.tracef("%s - %s - %s", diagramName, sqcDiagnosisName, status)
         
         ''' Now get the lab value name of the data that feeds the SQC Diagnosis '''
-        unitName, labValueName = getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
+        unitName, labValueName = getLabValueName(diagramName, sqcDiagnosisName)
         log.tracef("...%s - %s", unitName, labValueName)
         ds = system.dataset.setValue(ds, row, "LabValueName", labValueName)
         
@@ -96,15 +98,16 @@ def openSQCPlot(event):
     sqcDiagnosisName = event.source.SQCDiagnosisName
     SQCDiagnosisUUID = event.source.SQCDiagnosisUUID
     sqcDiagnosisLabel = event.source.ButtonLabel
-    openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID, sqcDiagnosisLabel)
+    diagramName = event.source.DiagramName
+    openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID, sqcDiagnosisLabel, diagramName)
 
 
-def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID, sqcDiagnosisLabel):
+def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID, sqcDiagnosisLabel, diagramName):
     sqcWindowPath='SQC/SQC Plot'
     n = 8
     intervalType = "Hours"
     
-    log.infof("The user selected %s - %s ", sqcDiagnosisName, SQCDiagnosisUUID)
+    log.infof("The user selected %s - %s on diagram: %s", sqcDiagnosisName, SQCDiagnosisUUID, diagramName)
     
     # If this is the first SQC plot open it at full size and centered, if it is the nth plot
     # then open it tiled at 75%
@@ -118,11 +121,23 @@ def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID, sqcDiagnosisL
 
     from ils.common.windowUtil import openWindowInstance
     if instanceCount == 0:
-        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName': sqcDiagnosisName,'sqcDiagnosisLabel': sqcDiagnosisLabel, 'sqcDiagnosisUUID': SQCDiagnosisUUID, 'n': n, 'intervalType': intervalType}, mode="CENTER", scale=1.0)
+        config = {'diagramName': diagramName,
+                  'sqcDiagnosisName': sqcDiagnosisName,
+                  'sqcDiagnosisLabel': sqcDiagnosisLabel, 
+                  'sqcDiagnosisUUID': SQCDiagnosisUUID, 
+                  'n': n, 
+                  'intervalType': intervalType}
+        openWindowInstance(sqcWindowPath, config, mode="CENTER", scale=1.0)
     else:
         provider = getTagProvider()
         scaleFactor = readTag("[%s]Configuration/Common/sqcPlotScaleFactor" % (provider)).value
-        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName': sqcDiagnosisName,'sqcDiagnosisLabel': sqcDiagnosisLabel, 'sqcDiagnosisUUID': SQCDiagnosisUUID, 'n': n, 'intervalType': intervalType}, mode="Tile", scale = scaleFactor)
+        config = {'diagramName': diagramName,
+                  'sqcDiagnosisName': sqcDiagnosisName,
+                  'sqcDiagnosisLabel': sqcDiagnosisLabel, 
+                  'sqcDiagnosisUUID': SQCDiagnosisUUID, 
+                  'n': n, 
+                  'intervalType': intervalType}
+        openWindowInstance(sqcWindowPath, config, mode="Tile", scale = scaleFactor)
 
 
 def openSQCPlots(sqcDiagnosisNames):
@@ -130,7 +145,10 @@ def openSQCPlots(sqcDiagnosisNames):
     This is called by the predefined SQC plots button which is a shortcut for preconfiguring buttons to show a whole group of SQC plots. 
     '''
     db = getDatabase()
-    pds =system.db.runQuery("select SQCDiagnosisName, SQCDiagnosisLabel, SQCDiagnosisUUID from DtSQCDiagnosis", db)
+    SQL = "select SQC.SQCDiagnosisName, SQC.SQCDiagnosisLabel, SQC.SQCDiagnosisUUID, D.DiagramName "\
+        "from DtSQCDiagnosis SQC, DtDiagram D "\
+        "where SQC.DiagramId = D.DiagramId"
+    pds =system.db.runQuery(SQL, db)
     
     for sqcDiagnosisName in sqcDiagnosisNames:
         sqcDiagnosisUUID = ""
@@ -138,12 +156,13 @@ def openSQCPlots(sqcDiagnosisNames):
         
         for record in pds:
             if string.upper(record["SQCDiagnosisName"]) == string.upper(sqcDiagnosisName):
+                diagramName = record["DiagramName"]
                 sqcDiagnosisUUID = record["SQCDiagnosisUUID"]
                 sqcDiagnosisLabel = record["SQCDiagnosisLabel"]
                 if sqcDiagnosisLabel in ["", None]:
                     sqcDiagnosisLabel = sqcDiagnosisName
         
-        openSQCPlotForSQCDiagnosis(sqcDiagnosisName, sqcDiagnosisUUID, sqcDiagnosisLabel)
+        openSQCPlotForSQCDiagnosis(sqcDiagnosisName, sqcDiagnosisUUID, sqcDiagnosisLabel, diagramName)
         
 
 def refresh(rootContainer):
@@ -155,11 +174,12 @@ def refresh(rootContainer):
     '''    
     log.tracef("In %s.refresh()", __name__)
     selectedPost = rootContainer.selectedPost
-    database=readTag("[Client]Database").value
+    database=getDatabase()
     
     SQL = "Select SQCDiagnosisName, Status, SQCDiagnosisUUID "\
-        "from DtSQCDiagnosis SQC, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
-        "where SQC.FamilyId = F.FamilyId "\
+        "from DtSQCDiagnosis SQC, DtDiagram D, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
+        "where SQC.DiagramId = D.DiagramId "\
+        " and D.FamilyId = F.FamilyId "\
         " and F.ApplicationId = A.ApplicationId "\
         " and A.UnitId = U. UnitId "\
         " and U.PostId = P.PostId "\

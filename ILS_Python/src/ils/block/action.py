@@ -56,28 +56,20 @@ class Action(basicblock.BasicBlock):
     # then evaluate the function. The output retains the 
     # timestamp of the input.
     def acceptValue(self, port, value, quality, time):
-        self.log.infof("In %s.acceptValue(), project: %s, resource: %s, state: %s", __name__, self.project, self.resource, self.state)
-        
         diagramPath = self.resource
-        
         handler = self.handler
-        self.log.infof("...UUID: %s", self.uuid)
-        
-        database = handler.getDefaultDatabase(self.project, self.resource)
-        self.log.infof("The default database is: %s", database)
-        
-        provider = handler.getDefaultTagProvider(self.project, self.resource)
-        self.log.infof("The default provider is: %s", provider)
-        
         block = handler.getBlock(self.project, self.resource, self.uuid)
         blockName = block.getName()
-        self.log.infof("Diagram Path: %s", diagramPath)
-        self.log.infof("Action Block Name: %s", blockName)
+        
+        self.log.infof("In %s.acceptValue(), project: %s, diagram: %s, block: %s, state: %s", __name__, self.project, self.resource, blockName, self.state)
+        
+        database = handler.getDefaultDatabase(self.project, self.resource)
+        provider = handler.getDefaultTagProvider(self.project, self.resource)
         
         trigger = self.properties.get('Trigger',{}).get("value","").lower()
         text = str(value).lower()
         if text == trigger:
-            self.log.infof("...processing a trigger...")
+            self.log.tracef("...processing a trigger...")
             self.state = "TRUE"
             function = self.properties.get('Script',{}).get("value","")
 
@@ -95,7 +87,6 @@ class Action(basicblock.BasicBlock):
                     exec("from %s import %s" % (packName,funcName))
             
                 eval(function)(block, diagramPath, blockName, self.uuid, provider, database)
-#                eval(function)(block)
 
         else:
             self.state = "FALSE"

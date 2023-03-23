@@ -43,7 +43,7 @@ def acceptValue(block,port,value,quality,time):
         time    - the timestamp of the incoming value
     '''
     if block!=None:
-        log.infof("%s.acceptValue() a %s received %s - %s on port %s", __name__, str(block.__class__), str(value), str(quality), str(port))
+        log.tracef("%s.acceptValue() a %s received %s - %s on port %s", __name__, str(block.__class__), str(value), str(quality), str(port))
         block.acceptValue(port,value,quality,time)
 
 

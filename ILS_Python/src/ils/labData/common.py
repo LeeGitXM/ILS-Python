@@ -36,15 +36,18 @@ def parseTagPath(tagPath):
     return tagPathRoot, tagName, provider
 
 def getDatabaseForTag(tagPath):
+    from ils.config.common import getProductionTagProviderFromInternalDatabase, getProductionDatabaseFromInternalDatabase, getIsolationDatabaseFromInternalDatabase
     tagPathRoot, tagName, tagProvider = parseTagPath(tagPath)
 
-    import system.ils.blt.diagram as blt
-    productionTagProvider=blt.getToolkitProperty("Provider")
+    # TODO - Really bad hard code of project name here! (PH 3/22/2023)
+    # It looks like this is only called by the unitParameter utility
+    projectName = "XOM"
+    productionTagProvider=getProductionTagProviderFromInternalDatabase(projectName)
 
     if tagProvider == productionTagProvider:
-        database=blt.getToolkitProperty("Database")
+        database=getProductionDatabaseFromInternalDatabase(projectName)
     else:
-        database=blt.getToolkitProperty("SecondaryDatabase")
+        database=getIsolationDatabaseFromInternalDatabase(projectName)
 
     return database
 

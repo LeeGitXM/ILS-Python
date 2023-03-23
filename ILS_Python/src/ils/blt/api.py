@@ -118,6 +118,20 @@ def resetBlock(diagramName, blockName):
         handler.resetBlock(projectResourceId, blockName)
     log.tracef("...block has been reset!")
     
+def getBlockState(diagramName, blockName):
+    log.infof("In %s.getBlockState() with block: %s, diagram: %s", __name__, blockName, diagramName)
+    projectResourceId = getProjectResourceId(diagramName)
+    scope = getScope()
+    if scope == GATEWAY:
+        import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+        handler = ControllerRequestHandler.getInstance()
+        blockState = handler.getBlockState(projectResourceId, blockName)
+    else:
+        handler = ApplicationRequestHandler()
+        blockState = handler.getBlockState(projectResourceId, blockName)
+    log.infof("...the block state is:%s", str(blockState))
+    return blockState
+    
 def setBlockState(diagramName, blockName, blockState):
     log.infof("In %s.setBlockState() with block: %s, diagram: %s, state: %s", __name__, blockName, diagramName, blockState)
     projectResourceId = getProjectResourceId(diagramName)

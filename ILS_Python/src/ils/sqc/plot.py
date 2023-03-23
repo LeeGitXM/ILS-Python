@@ -25,26 +25,21 @@ def internalFrameActivated(rootContainer):
     log.tracef("In internalFrameActivated()")
 
 def configureChart(rootContainer, db):
-    sqcDiagnosisName=rootContainer.sqcDiagnosisName
-    sqcDiagnosisUUID=rootContainer.sqcDiagnosisUUID
-    log.tracef("Configuring a chart for %s - %s using %s", sqcDiagnosisName, sqcDiagnosisUUID, db)
+    sqcDiagnosisName = rootContainer.sqcDiagnosisName
+    diagramName = rootContainer.diagramName
+    log.tracef("Configuring a chart for %s on %s using %s", sqcDiagnosisName, diagramName, db)
     
-    if sqcDiagnosisUUID == None or sqcDiagnosisUUID == "NULL":
-        system.gui.errorBox("Unable to configure an SQC chart for an SQC Diagnosis without a block id")
-        clearChart(rootContainer)
-        return
-    
-    lastResetTime = fetchLastResetTime(sqcDiagnosisUUID, db)
-    chartInfo=getSqcInfoFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
+    lastResetTime = fetchLastResetTime(diagramName, sqcDiagnosisName, db)
+    chartInfo = getSqcInfoFromDiagram(diagramName, sqcDiagnosisName)
     log.tracef("   ... chart Info: %s", str(chartInfo))
     if chartInfo == None:
-        system.gui.errorBox("Unable to get SQC info for SQC Diagnosis named: %s with uuid: %s" % (str(sqcDiagnosisName), str(sqcDiagnosisUUID)))
+        system.gui.errorBox("Unable to get SQC info for SQC Diagnosis named: %s on %s" % (str(sqcDiagnosisName), str(diagramName)))
         clearChart(rootContainer)
         return
     
-    unitName, labValueName=getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
+    unitName, labValueName = getLabValueName(diagramName, sqcDiagnosisName)
     if unitName == None or labValueName == None:
-        system.gui.errorBox("Unable to get the lab value for the SQC Diagnosis named: %s with uuid: %s" % (str(sqcDiagnosisName), str(sqcDiagnosisUUID)))
+        system.gui.errorBox("Unable to get the lab value for the SQC Diagnosis named: %s on %s" % (str(sqcDiagnosisName), str(diagramName)))
         clearChart(rootContainer)
         return
     
@@ -157,10 +152,13 @@ def configureChart(rootContainer, db):
     configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime, db)
 
 
-def fetchLastResetTime(sqcDiagnosisUUID, db):
-    SQL = "select LastResetTime from DtSQCDiagnosis where SQCDiagnosisUUID = '%s'" % (sqcDiagnosisUUID)
+def fetchLastResetTime(diagramName, sqcDiagnosisName, db):
+    SQL = "select LastResetTime from DtSQCDiagnosis SQC, DtDiagram D "\
+        "where SQC.diagramId = D.diagramId "\
+        "and SQC.SQCDiagnosisName = '%s' "\
+        "and D.DiagramName = '%s'" % (sqcDiagnosisName, diagramName)
     lastResetTime = system.db.runScalarQuery(SQL, db)
-    log.tracef( "The last reset time for %s was: %s", str(sqcDiagnosisUUID), str(lastResetTime))
+    log.tracef( "The last reset time for %s was: %s", str(sqcDiagnosisName), str(lastResetTime))
     return lastResetTime
 
 # Return the number of hours that are required to obtain the required # of points
@@ -292,44 +290,40 @@ def calculateLimitsFromTargetAndSigma(rootContainer):
     rootContainer.yAxisLowerLimit = lowerLimit
     rootContainer.yAxisUpperLimit = upperLimit
 
-def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
-    import system.ils.blt.diagram as diagram
+def getSqcInfoFromDiagram(diagramName, sqcDiagnosisName):
+    log.tracef("Getting SQC info for SQC Diagnosis named: <%s> with id: <%s>", sqcDiagnosisName, diagramName)
     
-    log.tracef("Getting SQC info for SQC Diagnosis named: <%s> with id: <%s>", sqcBlockName, sqcDiagnosisId)
-   
-    diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisId)
-    if diagramDescriptor == None:
-        log.tracef("Unable to locate the diagram for block with id: %s", str(sqcDiagnosisId))
-        return None
-
-    diagramId=diagramDescriptor.getId() 
-    log.tracef("   ... fetching upstream block info for chart <%s> ...", str(diagramId))
-
-    # Now get the SQC observation blocks
-    blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
-    log.tracef("   ... found %d upstream blocks...", len(blocks))
-
+    ''' Get all of the upstream blocks '''
+    from ils.blt.api import listBlocksGloballyUpstreamOf
+    blocks = listBlocksGloballyUpstreamOf(diagramName, sqcDiagnosisName)
+    log.tracef("Found blocks: %s", str(blocks))
+    
     sqcInfo=[]
     for block in blocks:
-#        print "Found a %s block..." % (block.getClassName())
+        log.tracef("Found a %s block named %s...", block.getClassName(), block.getClassName())
         if block.getClassName() == "com.ils.block.SQC":
-            blockId=block.getIdString()
             blockName=block.getName()
+            log.tracef("SQC Block: %s", blockName)
             
-            # First get block properties
-            sampleSize=diagram.getPropertyValue(diagramId, blockId, 'SampleSize')
-            numberOfStandardDeviations=diagram.getPropertyValue(diagramId, blockId, 'NumberOfStandardDeviations')
+            ''' 
+            Every block has a dictionary of attributes.  A Lab Data Entry block has two propeties from which we 
+            can get the name that we are after: currentValueSubscription and currentTimeSubscription.  I'll use the 
+            currentValueSubscription.  From it I can get the Unit Name and the Value Name just by parsing it.
+            '''
+            blockAttrs = block.getAttributes()
+            #blockProps = block.getProperties()
             
-            # now the state
-            state=diagram.getBlockState(diagramId, blockName)
+            log.tracef("  Attributes: %s", str(block.getAttributes()))
+            #log.tracef("  Properties: %s", str(block.getProperties()))
             
-            # now get some block internals
-            attributes = block.getAttributes()
-#            print "Attributes: ", attributes
-            target=attributes.get('Mean (target)')
-            minimumOutOfRange=attributes.get('Minimum Out of Range')
-            standardDeviation=attributes.get('StandardDeviation')
-            limitType=attributes.get('Limit type')
+            # Everything we need is in the block attributes
+            sampleSize = blockAttrs.get('SampleSize', None)
+            numberOfStandardDeviations = blockAttrs.get('Limit ~ std deviations', None)
+            state = blockAttrs.get("State", None)
+            target = blockAttrs.get('Mean (target)')
+            minimumOutOfRange = blockAttrs.get('Minimum Out of Range')
+            standardDeviation = blockAttrs.get('StandardDeviation')
+            limitType = blockAttrs.get('Limit type')
             
             sqcDictionary = {
                             "target": target,
@@ -341,50 +335,51 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
                             "state": state
                             }
             sqcInfo.append(sqcDictionary)
-            log.tracef("      %s", str(sqcDictionary))
+            log.tracef(" SQC Dictionary: %s", str(sqcDictionary))
         
     return sqcInfo
 
-# It sounds easy but it takes a lot of work to get the name of the lab value tag for the SQC chart.
-# We start with the SQC diagnosis, because that is the entry point for SQC plotting.  The we go 
-# upstream to find a labdata entry block.  Then from that we need to extract the name of the tag
-# bound to the value tag path property.  We do some work to strip things off to end up with the 
-# lab data name.
-def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisUUID):
-    import system.ils.blt.diagram as diagram
+
+def getLabValueName(diagramName, blockName):
+    '''
+    It sounds easy but it takes a lot of work to get the name of the lab value tag for the SQC chart.
+    We start with the SQC diagnosis, because that is the entry point for SQC plotting.  The we go 
+    upstream to find a labdata entry block.  Then from that we need to extract the name of the tag
+    bound to the value tag path property.  We do some work to strip things off to end up with the 
+    lab data name.
+    '''
     
     unitName=None
     labValueName=None
     
-    log.tracef("Getting Lab value name for SQC Diagnosis named: <%s> with UUID: <%s>", sqcBlockName, sqcDiagnosisUUID)
-   
-    diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisUUID)
-    if diagramDescriptor == None:
-        log.tracef("   *** Unable to locate the diagram for block with UUID: %s", sqcDiagnosisUUID)
-        return unitName, labValueName
-    
-    diagramId=diagramDescriptor.getId()
-    
-    log.tracef("   ... fetching upstream block info for chart <%s> ...", str(diagramId))
+    log.infof("In %s.getLabValueName() - Getting Lab value name for block named: <%s> on diagram: <%s>", __name__, blockName, diagramName)
 
-    # Get all of the upstream blocks
-    blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
+    ''' Get all of the upstream blocks '''
+    from ils.blt.api import listBlocksGloballyUpstreamOf
+    blocks = listBlocksGloballyUpstreamOf(diagramName, blockName)
+    log.tracef("Found blocks: %s", str(blocks))
 
     for block in blocks:
         if block.getClassName() == "com.ils.block.LabData":
-            log.tracef("   ... found the LabData block...")
-            blockId=block.getIdString()
+            blockName=block.getName()
             
-            # First get block properties
-            valueTagPath=diagram.getPropertyBinding(diagramId, blockId, 'ValueTagPath')
+            log.tracef("...found the LabData block named: %s", blockName)
 
-            # Strip off the trailing "/value"
+            ''' 
+            Every block has a dictionary of attributes.  A Lab Data Entry block has two propeties from which we 
+            can get the name that we are after: currentValueSubscription and currentTimeSubscription.  I'll use the 
+            currentValueSubscription.  From it I can get the Unit Name and the Value Name just by parsing it.
+            '''
+            blockAttrs = block.getAttributes()
+            valueTagPath = blockAttrs.get("CurrentValueSubscription", None)
+
+            ''' Strip off the trailing /value  '''
             if valueTagPath.endswith("/value"):
                 valueTagPath=valueTagPath[:len(valueTagPath) - 6]
             else:
                 log.warn("Unexpected lab value tag path - expected path to end with /value")
             
-            # Now strip off everything (provider and path from the left up to the last "/"
+            ''' Now strip off everything (provider and path from the left up to the last "/"  '''
             valueTagPath=valueTagPath[valueTagPath.find("]")+1:]
             unitName=valueTagPath[valueTagPath.find("/")+1:valueTagPath.rfind("/")]
             labValueName=valueTagPath[valueTagPath.rfind("/")+1:]

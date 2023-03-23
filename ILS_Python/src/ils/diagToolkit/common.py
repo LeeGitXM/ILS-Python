@@ -5,33 +5,10 @@ Created on Sep 19, 2014
 '''
 
 import system, time
-#import system.ils.blt.diagram as scriptingInterface
 from ils.io.util import readTag
 
 from ils.log import getLogger
 log = getLogger(__name__)
-
-# -------------------------- Helper methods ----------------------
-# Return the ProcessDiagram at the specified path
-def getDiagram(project, diagramPath):
-    print "Getting the process diagram named: %s" % (diagramPath)
-    
-    # The descriptor paths are :-separated, the input uses /
-    # the descriptor path starts with ":root:", 
-    # the input starts with the application
-    
-    descriptors = scriptingInterface.getDiagramDescriptors()
-    handler = scriptingInterface.getHandler()
-
-    for desc in descriptors:
-        path = desc.path[6:]
-        
-        if diagramPath == path:
-            log.trace("*** Found it ***")
-            return handler.getDiagram(desc.id)
-    
-    log.errorf("Unable to find diagram: %s", diagramPath)
-    return None  
 
 '''
 Check if the timestamps of two tags are consistent.  

@@ -58,7 +58,7 @@ def fetchQuantOutput(applicationName, quantOutputName, db, provider):
                 sp = sp.value
             else:
                 sp = "Bad Value"
-            data.append([record[QuantOutputId], record["QuantOutputName"],sp,record["FinalSetpoint"],record["DisplayedRecommendation"],record["TagPath"]])
+            data.append([record["QuantOutputId"], record["QuantOutputName"],sp,record["FinalSetpoint"],record["DisplayedRecommendation"],record["TagPath"]])
             
     ds = system.dataset.toDataSet(headers, data)
     return ds
@@ -98,8 +98,8 @@ def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
 # Given a dataset of final diagnoses, for each diagnosis, interrogate the diagram and determine if there is a SQC diagnosis
 # upstream of the final diagnosis. (This runs in the client)
 def updateSqcFlag(diagnoses):
-    import system.ils.blt.diagram as diagram
-    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
+    from ils.blt.api import listBlocksGloballyUpstreamOf
+    
     log.tracef("In updateSqcFlag() - updating the hasSQC flag for each final diagnosis...")
     for row in range(diagnoses.rowCount):
         finalDiagnosisName = diagnoses.getValueAt(row, "Name")
@@ -109,7 +109,13 @@ def updateSqcFlag(diagnoses):
         
         if diagramUUID != None: 
             # Get the upstream blocks, make sure to jump connections
-            blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
+            
+            # ***************************************************
+            # TODO - need to fetch the diagamName from somewhere
+            # Look at ils.sqc.plot.py for a completed example of how wto do this in Ignition 8
+            # ***************************************************
+            diagramName = "ABC"
+            blocks = listBlocksGloballyUpstreamOf(diagramName, finalDiagnosisName)
             
             log.tracef("...found %d upstream blocks...", len(blocks))
     
