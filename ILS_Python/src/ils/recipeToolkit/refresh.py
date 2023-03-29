@@ -174,10 +174,10 @@ def refresher(familyName, ds, downloadType, provider, database=""):
 
             ds = system.dataset.setValue(ds, i, "Comp", compVal)
             if downloadType in ['MidRun', 'Process Values']:
-                print "Setting pend val to actual for row: ", i
+                #print "Setting pend val to actual for row: ", i
                 pendVal = compVal
             else:
-                print "Setting pend val to recipe for row: ", i
+                #print "Setting pend val to recipe for row: ", i
                 pendVal = reccVal
             ds = system.dataset.setValue(ds, i, "Pend", pendVal)
                 

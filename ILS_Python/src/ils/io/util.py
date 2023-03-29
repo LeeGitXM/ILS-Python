@@ -391,12 +391,12 @@ def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDiff
 
     # When we write a NaN we read back a Null value which looks like a '' - Treat these as equal
     if val1 == None or val2 == None or string.upper(str(val1)) == "NAN" or string.upper(str(val2)) == "NAN":
-        print "One of the values is NAN or None..."
+        #print "One of the values is NAN or None..."
         val1 = string.upper(str(val1))
         val2 = string.upper(str(val2))
-        print "Now comparing: ", val1, val2
+        #print "Now comparing: ", val1, val2
         if (val1 == 'NAN' or val1 == '' or val1 == 'NONE' or val1 == None) and (val2 == 'NAN' or val2 == '' or val2 == 'NONE' or val2 == None):
-            print " EQUAL "
+            #print " EQUAL "
             return True
         else:
             return False
