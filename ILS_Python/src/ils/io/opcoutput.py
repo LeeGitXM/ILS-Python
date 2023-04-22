@@ -10,7 +10,7 @@ import ils
 import ils.io
 import ils.io.opctag as opctag
 from ils.io.util import readTag, writeTag
-import system, string
+import system, string, time
 
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -110,6 +110,77 @@ class OPCOutput(opctag.OPCTag):
             writeTag(self.path + "/writeErrorMessage", msg)
  
         return status, msg
+    
+    def writeRamp(self, val, valType, rampTime, updateFrequency, writeConfirm):
+        '''
+        This method makes sequential writes to ramp the value of an output.  
+        There is no native output ramping capability in the DCS for ramping an output and this method fills the gap.    
+        The ramp is executed by writing sequentially based on a linear ramp.  
+        The ramp time is in minutes.. 
+        '''   
+        success = True
+        errorMessage = ""
+        log.tracef("In %s.writeRamp() Writing %s for OPC output %s", __name__, valType, self.path)
+
+        if val == None or rampTime == None or writeConfirm == None or valType == None or updateFrequency == None:
+            log.errorf("ERROR writing ramp for OPC output: %s - One or more of the required arguments is missing val=%s rampTime=%s writeConfirm=%s valType=%s updateFreq=%s" % (self.path,val,rampTime,writeConfirm,valType,updateFrequency))
+            return False, "One or more of the required arguments is missing"
+        
+        ''' Check the basic configuration of the tag '''        
+        status,reason = self.checkConfig()
+        if status == False :              
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", reason)
+            log.warnf("%s - Aborting write to %s, checkConfig failed due to: %s", __name__, self.path, reason)
+            return status,reason
+
+        ''' reset the UDT '''
+        self.reset()
+        
+        ''' Update the status to "Writing" '''
+        writeTag(self.path + "/writeStatus", "Writing Value")
+        
+        ''' Read the starting point for the ramp which is the current value '''
+        startValue = readTag(self.path + '/value')
+        if str(startValue.quality) != 'Good':
+            errorMessage = "ERROR: OPC Output <%s> - ramp aborted due to inability to read the starting value!" % (self.path)
+            log.error(errorMessage)
+            return False, errorMessage
+
+        startValue = startValue.value
+
+        baseTxt = "Ramping <%s> from %s to %s over %s minutes" % (self.path, str(startValue), str(val), str(rampTime))
+        log.infof(baseTxt)
+        writeTag(self.path + "/writeStatus", baseTxt)
+
+        rampTimeSeconds = float(rampTime) * 60.0
+
+        from ils.common.util import equationOfLine
+        m, b = equationOfLine(0.0, startValue, rampTimeSeconds, val)
+        startTime = system.date.now()
+        deltaSeconds = system.date.secondsBetween(startTime, system.date.now())
+        
+        while (deltaSeconds < rampTimeSeconds):
+            from ils.common.util import calculateYFromEquationOfLine
+            aVal = calculateYFromEquationOfLine(deltaSeconds, m, b)
+            
+            log.tracef("OPC Output <%s> ramping to %s (elapsed time: %s)", self.path, str(aVal), str(deltaSeconds))
+            
+            status = writeTag(self.path + "/value", aVal)
+            txt = "%s (%.2f at %s)" % (baseTxt, aVal, str(deltaSeconds))
+            writeTag(self.path + "/writeStatus", txt)
+ 
+            ''' Time in seconds '''
+            time.sleep(updateFrequency)
+            deltaSeconds = system.date.secondsBetween(startTime, system.date.now())
+        
+        ''' Write the final point and confirm this one '''
+        status = writeTag(self.path + "/value", val)
+        print "Final value status: ", status
+
+        log.infof("%s - <%s> done ramping!", __name__, self.path)
+        return success, errorMessage
+
 
     def writeWithNoCheck(self, val, valueType=""):
         ''' Write with NO confirmation.  Assume the UDT structure of an OPC Output '''

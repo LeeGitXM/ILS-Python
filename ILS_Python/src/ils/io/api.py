@@ -3,7 +3,7 @@ Created on Nov 30, 2014
 
 @author: Pete
 '''
-import string, system, traceback
+import string, system, traceback, time
 from ils.io.util import isUDTorFolder, checkConfig, readTag, writeTag
 from ils.common.error import catchError
 
@@ -210,9 +210,59 @@ def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
             return False, reason
         
     else:
-        ''' The 'Tag" is either a simple memory tag or an simple OPC tag '''
-        log.error("Ramps have not been implemented to simple tags (%s)..." % (tagPath))
-        return False, "Ramps have not been implemented for a simple tag."
+        '''
+        The "Tag" is either a simple memory tag or an simple OPC tag.
+        Ramp the tag by writing sequentially based on a linear ramp.  
+        The ramp time is in minutes.. 
+        '''   
+        success = True
+        errorMessage = ""
+        log.tracef("In %s.writeRamp() Writing %s for a simple tag %s", __name__, valType, tagPath)
+
+        if val == None or rampTime == None or writeConfirm == None or valType == None or updateFrequency == None:
+            log.errorf("ERROR writing ramp for simple tag: %s - One or more of the required arguments is missing val=%s rampTime=%s writeConfirm=%s valType=%s updateFreq=%s" % (tagPath,val,rampTime,writeConfirm,valType,updateFrequency))
+            return False, "One or more of the required arguments is missing"
+        
+        ''' Check that the tag exists and writing is enabled '''
+        configOK, errorMessage = checkConfig(tagPath)
+        if not(configOK):
+            return configOK, errorMessage
+        
+        ''' Read the starting point for the ramp which is the current value '''
+        startValue = readTag(tagPath)
+        if str(startValue.quality) != 'Good':
+            errorMessage = "ERROR: OPC Output <%s> - ramp aborted due to inability to read the starting value!" % (tagPath)
+            log.error(errorMessage)
+            return False, errorMessage
+
+        startValue = startValue.value
+
+        baseTxt = "Ramping <%s> from %s to %s over %s minutes" % (tagPath, str(startValue), str(val), str(rampTime))
+        log.infof(baseTxt)
+
+        rampTimeSeconds = float(rampTime) * 60.0
+
+        from ils.common.util import equationOfLine
+        m, b = equationOfLine(0.0, startValue, rampTimeSeconds, val)
+        startTime = system.date.now()
+        deltaSeconds = system.date.secondsBetween(startTime, system.date.now())
+        
+        while (deltaSeconds < rampTimeSeconds):
+            from ils.common.util import calculateYFromEquationOfLine
+            aVal = calculateYFromEquationOfLine(deltaSeconds, m, b)
+            
+            log.tracef("Ramping simple tag <%s> to %s (elapsed time: %s)", tagPath, str(aVal), str(deltaSeconds))
+            
+            status = writeTag(tagPath, aVal)
+ 
+            ''' Time in seconds '''
+            time.sleep(updateFrequency)
+            deltaSeconds = system.date.secondsBetween(startTime, system.date.now())
+        
+        ''' Write the final point and confirm this one '''
+        status = writeTag(tagPath, val)
+        log.infof("%s - <%s> done ramping!", __name__, tagPath)
+        #return success, errorMessage
     
     return confirmed, errorMessage
 
