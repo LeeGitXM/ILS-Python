@@ -54,7 +54,11 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
         log.tracef("In %s.writeDatum()...", __name__)
         status, msg = self.writer(val, True, valueType)
         return status, msg
-    
+
+    def writeRamp(self, val, valType, rampTime, updateFrequency, writeConfirm):
+        # This probably should be overridden to consider the permissive, but this is a first pass - 4/22/23
+        opcoutput.OPCOutput.writeRamp(self, val, valType, rampTime, updateFrequency, writeConfirm)
+
     '''
     This is a private method that is used by both of the public methods (writeDatum and writeWithNoCheck)
     '''
