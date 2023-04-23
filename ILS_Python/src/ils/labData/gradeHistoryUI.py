@@ -4,8 +4,7 @@ Created on Apr 8, 2016
 @author: ils
 '''
 import system, datetime
-from ils.config.client import getHistoryTagProvider
-from ils.config.common import getTagProvider
+from ils.config.client import getHistoryTagProvider, getTagProvider
 
 # Open transaction when window is opened
 def internalFrameOpened(rootContainer):
