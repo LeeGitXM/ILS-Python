@@ -182,15 +182,19 @@ def clientCommon():
         system.nav.centerWindow(window)
     
     '''
+    --- With Ignition 8 where wach site has it's own site specific project we do not have all of the consoles in the project or in the menu ---
     Remove unwanted consoles.  Remember that there is a single project that contains all of the consoles for the Baton Rouge complex.
     This determines which consoles are appropriate for the site by querying the console definition table in the site specific database.
+    '''
+    
     '''
     if window != None:
         menubar = getMenuBar(window)
         clearConsoles(menubar)
         ConsoleMenus(menubar)
         removeUnwantedMenus(menubar, "XOM") #The second argument is NOT The project name, it is the project type
-
+    '''
+    
     '''
     If this is an operator, then remove the admin menu and the View->Consoles menu.
     '''

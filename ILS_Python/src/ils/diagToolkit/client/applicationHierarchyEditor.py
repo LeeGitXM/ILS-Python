@@ -349,6 +349,11 @@ def insertDiagramCallback(event):
     rootContainer = event.source.parent
     diagramTreeWidget = rootContainer.getComponent("Diagram Container").getComponent("Diagram Tree")
     row = diagramTreeWidget.selectedItem
+    ds = diagramTreeWidget.data
+    selectedDiagramPath = ds.getValueAt(row, "path")
+    
+    tree = diagramTreeWidget.viewport.view    
+    selectedPath = tree.getSelectionPath()
     
     ''' The full diagram path is in the tooltip.  Because I don't use any intermediate nodes while building this Tree, I can go directly from the selected Item into the dataset '''
     ds = diagramTreeWidget.data
@@ -370,14 +375,45 @@ def insertDiagramCallback(event):
     '''
     1) Update the database so that the diagram is a member of the family
     2) Refresh the diagram tree (by fetching  the diagrams from the database)
-    3) Refresh the  (by fetching the data from database)
+    3) Refresh the hierarchy tree  (by fetching the data from database)
     '''
     
     SQL = "Update DtDiagram set FamilyId = %d where DiagramId = %d" % (familyId, diagramId)
     system.db.runUpdateQuery(SQL, database=db)
     refreshDiagramTree(rootContainer, db)
     refreshHierarchyTree(rootContainer, db)
+    
+    '''
+    Expand the application hierarchy for the selected family so that the moved diagram shows up 
+    '''
+    log.infof("Expanding the family in the application hierarchy...")
+    from javax.swing.tree import TreePath
+    tree = hierarchyTreeWidget.viewport.view    
+    selectedPath = tree.getSelectionPath()
+    log.tracef("The selected hierarchy path is: %s", selectedPath)
+    if selectedPath != None:
+        log.tracef("Expanding %s", selectedPath)
+        tree.expandPath(selectedPath)
 
+    '''
+    Expand the diagram tree for the next diagram in the older or nothing is selected
+    '''
+    ds = diagramTreeWidget.data
+    selectedChart = None
+    selectedRow = -1
+    for row in range(ds.rowCount):
+        log.tracef("Row: %d - path: %s - chart: %s", row, ds.getValueAt(row, "path"), ds.getValueAt(row, "text"))
+        if selectedDiagramPath == ds.getValueAt(row, "path"):
+            if selectedChart == None or ds.getValueAt(row, "text") < selectedChart:
+                selectedRow = row
+                selectedChart = ds.getValueAt(row, "text")
+    
+    if selectedRow == None:
+        diagramTreeWidget.selectedItem = -1
+    else:
+        diagramTreeWidget.selectedItem = selectedRow
+
+        
 def removeDiagramCallback(rootContainer):
     ''' This is called from a popup. '''
     

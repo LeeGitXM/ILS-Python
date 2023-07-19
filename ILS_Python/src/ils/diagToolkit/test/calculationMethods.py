@@ -317,6 +317,12 @@ def fd1_2_6(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     recommendations = []
     return True, "Turn up the heat", recommendations
 
+# A text recommendations
+def fd1_2_6a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_2_6a" % (__name__)
+    recommendations = []
+    return True, "Hello world!  It's a beautiful day!", recommendations
+
 # A ramp recommendations
 def fd1_2_7(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In %s.fd1_2_7" % (__name__)
@@ -387,6 +393,20 @@ def fd2_1_1e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     recommendations = []
 
     recommendations.append({"QuantOutput": "TEST_Q21", "Value": 40.0, "RampTime": 1.0})
+
+    return True, explanation, recommendations
+
+def fd2_1_1f(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    ''' 
+    This tests two recommendation to two PKS controller.  
+    Pressing Download (outside of the scope of the automated test) demonstrates that outputs are written serially.
+    '''
+    print "In %s.fd2_1_1f" % (__name__)
+    explanation = "Ramp two plain controllers."
+    recommendations = []
+
+    recommendations.append({"QuantOutput": "TEST_Q21", "Value": 40.0, "RampTime": 1.0})
+    recommendations.append({"QuantOutput": "TEST_Q22", "Value": 120.0, "RampTime": 1.5})
 
     return True, explanation, recommendations
 

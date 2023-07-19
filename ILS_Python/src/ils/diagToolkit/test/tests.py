@@ -40,6 +40,7 @@ def stub2(arg1):
     print "In stub2 with ", arg1
 
 def test00(db):
+    log.infof("In %s.test00()", __name__)
     log.tracef("Starting %s.test00()", __name__)
     disableVectorClampMode(provider)
     disableVectorClampMode(provider)
@@ -61,6 +62,7 @@ def test00(db):
     return applicationName
 
 def test01(db):
+    log.infof("In %s.test01()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_1'
@@ -77,6 +79,7 @@ def test01(db):
     return applicationName
     
 def test02(db):
+    log.infof("In %s.test02()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -93,6 +96,7 @@ def test02(db):
     return applicationName
     
 def test03a(db):
+    log.infof("In %s.test03a()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -115,6 +119,7 @@ def test03a(db):
     return applicationName
     
 def test03b(db):
+    log.infof("In %s.test03b()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -135,6 +140,7 @@ def test03b(db):
     return applicationName
     
 def test03c(db):
+    log.infof("In %s.test03c()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     
@@ -163,6 +169,7 @@ def test03c(db):
     return applicationName
     
 def test03d(db):
+    log.infof("In %s.test03d()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
 
@@ -193,6 +200,7 @@ def test03d(db):
     return applicationName
 
 def test03e(db):
+    log.infof("In %s.test03e()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -210,6 +218,7 @@ def test03e(db):
     return applicationName
 
 def test04(db):
+    log.infof("In %s.test04()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -231,6 +240,7 @@ def test04(db):
     return applicationName
         
 def test05(db):
+    log.infof("In %s.test05()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -252,6 +262,7 @@ def test05(db):
     return applicationName
     
 def test06(db):
+    log.infof("In %s.test06()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -273,6 +284,7 @@ def test06(db):
     return applicationName
             
 def test07(db):
+    log.infof("In %s.test07()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -293,6 +305,7 @@ def test07(db):
     return applicationName
 
 def test08a(db):
+    log.infof("In %s.test08a()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -310,6 +323,7 @@ def test08a(db):
     return applicationName
 
 def test08b(db):
+    log.infof("In %s.test08b()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -327,6 +341,7 @@ def test08b(db):
     return applicationName
 
 def test08c(db):
+    log.infof("In %s.test08c()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -344,6 +359,7 @@ def test08c(db):
     return applicationName
 
 def test08d(db):
+    log.infof("In %s.test08d()", __name__)
     implementVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -361,6 +377,7 @@ def test08d(db):
     return applicationName
     
 def test08e(db):
+    log.infof("In %s.test08e()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -378,6 +395,7 @@ def test08e(db):
     return applicationName
 
 def test08f(db):
+    log.infof("In %s.test08f()", __name__)
     implementVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -395,6 +413,7 @@ def test08f(db):
     return applicationName
     
 def test11a(db):
+    log.infof("In %s.test11a()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_1'
@@ -412,6 +431,7 @@ def test11a(db):
     return applicationName
 
 def test11a2(db):
+    log.infof("In %s.test11a2()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_1'
@@ -429,6 +449,7 @@ def test11a2(db):
     return applicationName
     
 def test11b(db):
+    log.infof("In %s.test11b()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -446,6 +467,7 @@ def test11b(db):
     return applicationName
 
 def test11c(db):
+    log.infof("In %s.test11c()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -466,6 +488,7 @@ def test12aa(db):
     '''
     This uses the same calculation method as the rest of the 
     '''
+    log.infof("In %s.test12aa()", __name__)
     implementVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -483,6 +506,7 @@ def test12aa(db):
     return applicationName
     
 def test12a(db):
+    log.infof("In %s.test12a()", __name__)
     implementVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -500,6 +524,7 @@ def test12a(db):
     return applicationName
     
 def test12b(db):
+    log.infof("In %s.test12b()", __name__)
     adviseVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -517,6 +542,7 @@ def test12b(db):
     return applicationName
     
 def test12c(db):
+    log.infof("In %s.test12c()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -534,6 +560,7 @@ def test12c(db):
     return applicationName
     
 def test12d(db):
+    log.infof("In %s.test12d()", __name__)
     implementVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -551,6 +578,7 @@ def test12d(db):
     return applicationName
 
 def test12e(db):
+    log.infof("In %s.test12e()", __name__)
     implementVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -568,6 +596,7 @@ def test12e(db):
     return applicationName
 
 def test12f(db):
+    log.infof("In %s.test12f()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -585,6 +614,7 @@ def test12f(db):
     return applicationName
 
 def test13a(db):
+    log.infof("In %s.test13a()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_1'
@@ -602,6 +632,7 @@ def test13a(db):
     return applicationName
     
 def test13b(db):
+    log.infof("In %s.test13b()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_1'
@@ -620,6 +651,7 @@ def test13b(db):
 
 # Test incremental recommendations when the setpoint is way outside the limits.
 def test13c(db):
+    log.infof("In %s.test13c()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_1'
@@ -638,6 +670,7 @@ def test13c(db):
 
 # Test a bad output wherte the FD only writes to 1
 def test14a1(db):
+    log.infof("In %s.test14a1()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_1'
@@ -656,6 +689,7 @@ def test14a1(db):
 
 # Test a bad output where the FD writes to 2 - I think if we can't write to all of them we don't want to write to any.
 def test14a2(db):
+    log.infof("In %s.test14a2()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -673,6 +707,7 @@ def test14a2(db):
     return applicationName
 
 def test14b1(db):
+    log.infof("In %s.test14b1()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_1'
@@ -692,6 +727,7 @@ def test14b1(db):
 # This tests error handling for a non existent calculation method.  Specifically it tests that the Final diagnosis
 # does not remain active and therefore block subsequent lower priority diagnosis from becoming active. 
 def test14b2(db):
+    log.infof("In %s.test14b2()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/T3", 20.3)
     applicationName='FINAL_TEST_1'
@@ -715,6 +751,7 @@ def test14b2(db):
 
 # Test divide by zero in the calculation method
 def test14b3(db):
+    log.infof("In %s.test14b3()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/T3", 20.3)
     applicationName='FINAL_TEST_1'
@@ -737,6 +774,7 @@ def test14b3(db):
 
 # Test case insesitive recommendations
 def test14b4(db):
+    log.infof("In %s.test14b4()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/T3", 20.3)
     applicationName='FINAL_TEST_1'
@@ -758,6 +796,7 @@ def test14b4(db):
     return applicationName
 
 def test14c(db):
+    log.infof("In %s.test14c()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -775,6 +814,7 @@ def test14c(db):
     return applicationName
 
 def test14d(db):
+    log.infof("In %s.test14d()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -802,6 +842,7 @@ The purpose of this test is to test residual recommendations that are not cleane
 FD comes in.
 '''
 def test14e(db):
+    log.infof("In %s.test14e()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/T3", 20.3)
     applicationName='FINAL_TEST_1'
@@ -826,6 +867,7 @@ def test14e(db):
     return applicationName
     
 def test15a(db):
+    log.infof("In %s.test15a()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -843,6 +885,7 @@ def test15a(db):
     return applicationName
     
 def test15b(db):
+    log.infof("In %s.test15b()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -863,6 +906,7 @@ def test15b(db):
     return applicationName
     
 def test15c(db):
+    log.infof("In %s.test15c()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -883,6 +927,7 @@ def test15c(db):
     return applicationName
     
 def test15d(db):
+    log.infof("In %s.test15d()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -900,6 +945,7 @@ def test15d(db):
     return applicationName
     
 def test15e(db):
+    log.infof("In %s.test15e()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -917,6 +963,7 @@ def test15e(db):
     return applicationName
     
 def test15f(db):
+    log.infof("In %s.test15f()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/T3", 20.3)
     applicationName='FINAL_TEST_1'
@@ -938,6 +985,7 @@ def test15f(db):
     return applicationName
     
 def test15g(db):
+    log.infof("In %s.test15g()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/T3", 20.3)
     applicationName='FINAL_TEST_1'
@@ -962,6 +1010,7 @@ def test15h(db):
     '''
     See ticket #597 which raises questions about this issue.
     '''
+    log.infof("In %s.test15h()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "Configuration/DiagnosticToolkit/zeroChangeThreshold", 0.01)
     applicationName='FINAL_TEST_1'
@@ -980,6 +1029,7 @@ def test15h(db):
     return applicationName
 
 def test15i(db):
+    log.infof("In %s.test15i()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -997,6 +1047,7 @@ def test15i(db):
     return applicationName
 
 def test16a(db):
+    log.infof("In %s.test16a()", __name__)
     print "-----------------------------------"
     print "Start test16a()"
     disableVectorClampMode(provider)
@@ -1046,6 +1097,7 @@ def test16a(db):
     return applicationName
 
 def test16b(db):
+    log.infof("In %s.test16b()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/Lab_Data/value", 17.345)
     writeTag(provider + "DiagnosticToolkit/Inputs/T1_Target", 25.0)
@@ -1098,6 +1150,7 @@ def test16b(db):
     return applicationName
 
 def test16c(db):
+    log.infof("In %s.test16c()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/Lab_Data/value", 20.0)
     writeTag(provider + "DiagnosticToolkit/Inputs/T1_Target", 25.0)
@@ -1145,6 +1198,7 @@ def test16c(db):
     return applicationName
 
 def test16d(db):
+    log.infof("In %s.test16d()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/Lab_Data/value", 20.0)
     writeTag(provider + "DiagnosticToolkit/Inputs/T1_Target", 25.0)
@@ -1192,6 +1246,7 @@ def test16d(db):
     return applicationName
 
 def test16e(db):
+    log.infof("In %s.test16e()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/Lab_Data/value", 20.0)
     writeTag(provider + "DiagnosticToolkit/Inputs/T1_Target", 25.0)
@@ -1239,6 +1294,7 @@ def test16e(db):
     return applicationName
 
 def test16f(db):
+    log.infof("In %s.test16f()", __name__)
     disableVectorClampMode(provider)
     writeTag(provider + "DiagnosticToolkit/Inputs/Lab_Data/value", 20.0)
     writeTag(provider + "DiagnosticToolkit/Inputs/T1_Target", 25.0)
@@ -1287,6 +1343,7 @@ def test16f(db):
     return applicationName
 
 def test16g(db):
+    log.infof("In %s.test16g()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1316,6 +1373,7 @@ def test16g(db):
     return applicationName
 
 def test16h(db):
+    log.infof("In %s.test16h()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1345,6 +1403,7 @@ def test16h(db):
     return applicationName
 
 def test16i(db):
+    log.infof("In %s.test16i()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1375,6 +1434,7 @@ def test16i(db):
 
 
 def test16j(db):
+    log.infof("In %s.test16j()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1401,8 +1461,59 @@ def test16j(db):
     postDiagnosisEntry(project, applicationName, familyName, diagramName, fDName, 'FD_UUID','DIAGRAM_UUID', provider=providerName, database=db)
     return applicationName
 
+def test16k(db):
+    log.infof("In %s.test16k()", __name__)
+    disableVectorClampMode(provider)
+    writeTag(provider + "DiagnosticToolkit/Inputs/Lab_Data/value", 20.0)
+    writeTag(provider + "DiagnosticToolkit/Inputs/T1_Target", 25.0)
+
+    applicationName='FINAL_TEST_2'
+    familyName = 'FT_Family2_1'
+    diagramName = 'FT_Diagram2_1'
+    fDName = 'FT_FD2_1_1'
+    appId=insertApp2(db, groupRampMethod='Longest')
+    
+    writeTag(provider + TC100_TagName + "/sp/value", 20.0)
+    writeTag(provider + TC100_TagName + "/mode/value", "AUTO")
+    Q21_id=insertQuantOutput(appId, 'TEST_Q21', TC100_TagName,  20.0, db=db)
+    
+    writeTag(provider + TC101_TagName + "/sp/value", 50.0)
+    writeTag(provider + TC101_TagName + "/mode/value", "AUTO")
+    Q22_id=insertQuantOutput(appId, 'TEST_Q22', TC101_TagName, 50.0, db=db)
+    
+    writeTag(provider + T100_TagName + "/value", 27.91)
+    Q23_id=insertQuantOutput(appId, 'TEST_Q23', T100_TagName, 27.91, db=db)
+    
+    writeTag(provider + T101_TagName + "/value", 113.81)
+    Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName, 113.81, db=db)
+    
+    writeTag(provider + TC102_TagName + "/value", 20.5)
+    writeTag(provider + TC102_TagName + "/mode/value", "AUTO")
+    writeTag(provider + TC102_TagName + "/sp/value", 20.5)
+    writeTag(provider + TC102_TagName + "/sp/targetValue", 0.0)
+    writeTag(provider + TC102_TagName + "/sp/rampTime", 10.0)
+    writeTag(provider + TC102_TagName + "/sp/rampState", "")
+    Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5, db=db)
+    
+    writeTag(provider + TC105_TagName + "/value", 20.0)
+    writeTag(provider + TC105_TagName + "/mode/value", "AUTO")
+    writeTag(provider + TC105_TagName + "/sp/value", 20.0)
+    writeTag(provider + TC105_TagName + "/sp/targetValue", 0.0)
+    writeTag(provider + TC105_TagName + "/sp/rampTime", 10.0)
+    writeTag(provider + TC105_TagName + "/sp/rampState", "")
+    Q26_id=insertQuantOutput(appId, 'TEST_Q26', TC105_TagName, 10.0, db=db)
+    
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1f', db=db)
+    
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    print "...posting a diagnosis entry..."
+    postDiagnosisEntry(project, applicationName, familyName, diagramName, fDName, 'FD_UUID', 'DIAGRAM_UUID', provider=providerName)
+    print "...done setting up the test..."
+    return applicationName
+
 
 def test17a(db):
+    log.infof("In %s.test17a()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1464,6 +1575,7 @@ def test17a(db):
 
 # Test a single text recommendation
 def test18a(db):
+    log.infof("In %s.test18a()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1482,6 +1594,7 @@ def test18a(db):
 
 # Simultaneously post two text recommendations with different priorities
 def test18b1(db):
+    log.infof("In %s.test18b1()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1503,6 +1616,7 @@ def test18b1(db):
 
 # Simultaneously post two text recommendations with the same priorities
 def test18b2(db):
+    log.infof("In %s.test18b2()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1524,6 +1638,7 @@ def test18b2(db):
 
 # Simultaneously post two text recommendations with the same priorities
 def test18b3(db):
+    log.infof("In %s.test18b3()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1545,6 +1660,7 @@ def test18b3(db):
 
 # Test a high priority text final diagnosis becoming true followed by a low priority numeric diagnosis 
 def test18c(db):
+    log.infof("In %s.test18c()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1567,6 +1683,7 @@ def test18c(db):
 
 # Test a low priority text FD followed by a high priority numeric FD
 def test18d(db):
+    log.infof("In %s.test18d()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1589,6 +1706,7 @@ def test18d(db):
 
 # Test a static (One without a calculation method) text recommendation.
 def test18e(db):
+    log.infof("In %s.test18e()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1607,6 +1725,7 @@ def test18e(db):
 
 # Test a text recommendation loaded with special punctuation.
 def test18f(db):
+    log.infof("In %s.test18f()", __name__)
     disableVectorClampMode(provider)
     applicationName='FINAL_TEST_1'
     familyName = 'FT_Family1_2'
@@ -1621,6 +1740,27 @@ def test18f(db):
     
     textRecommendation="Hello, It's a sunny day! The boss said: \"Turn up the heat!\".  Here are some more \@#/$@%^&*()?>< THE END"
     updateFinalDiagnosisTextRecommendation(fDName, textRecommendation, db)
+    
+    postDiagnosisEntry(project, applicationName, familyName, diagramName, fDName, 'FD_UUID', 'DIAGRAM_UUID', provider=providerName, database=db)
+    return applicationName
+    
+# Test a text recommendation loaded with special punctuation.
+def test18g(db):
+    log.infof("In %s.test18g()", __name__)
+    disableVectorClampMode(provider)
+    applicationName='FINAL_TEST_1'
+    familyName = 'FT_Family1_2'
+    diagramName = 'FT_Diagram1_2'
+    fDName="FT_FD1_2_6"
+    
+    appId=insertApp1(db)
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, db=db)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, db=db)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, db=db)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, FD126calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_6', db=db)
+    
+#    textRecommendation="Hello, It's a sunny day! The boss said: \"Turn up the heat!\".  Here are some more \@#/$@%^&*()?>< THE END"
+#    updateFinalDiagnosisTextRecommendation(fDName, textRecommendation, db)  
 
     postDiagnosisEntry(project, applicationName, familyName, diagramName, fDName, 'FD_UUID', 'DIAGRAM_UUID', provider=providerName, database=db)
     return applicationName

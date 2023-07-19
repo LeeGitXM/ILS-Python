@@ -231,7 +231,7 @@ def calculateFinalRecommendation(quantOutput, groupRampTime):
     the minimum change warning to kick in for the 2 quant outputs that were not changed.
     '''
     if len(recommendations) == 0:
-        log.error("No recommendations were found for quant output: %s" % (quantOutput.get("QuantOutput", "Unknown")))
+        log.warnf("No recommendations were found for quant output: %s", quantOutput.get("QuantOutput", "Unknown"))
         return None
 
     isaRamp = False

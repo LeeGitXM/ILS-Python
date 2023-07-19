@@ -119,8 +119,10 @@ def refresher(familyName, ds, downloadType, provider, database=""):
         tags.append(tagName + '/value')
     log.trace("OPC tag names: %s" % (str(tags)))
 
-    values = system.tag.readBlocking(tags)
-#    print values
+    if len(tags) == 0:
+        values = []
+    else:
+        values = system.tag.readBlocking(tags)
 
     # Now the local tags - convert *local* tagnames from SQL*Server format to Ignition format...
     tags = []
@@ -130,7 +132,10 @@ def refresher(familyName, ds, downloadType, provider, database=""):
         tags.append(tagName)
 
     log.trace("Local tag names: %s" % (str(tags)))
-    localValues = system.tag.readBlocking(tags)
+    if len(tags) == 0:
+        localValues = []
+    else:
+        localValues = system.tag.readBlocking(tags)
 
     # We have now read all of the tags, merge the values back into the Python dataset
     log.trace("  ...updating table dataset....")

@@ -597,7 +597,7 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     log.tracef("...%s.insertApp1Families() is finished!", __name__)
 
 # Create everything required for the APP2 test
-def insertApp2(db):
+def insertApp2(db, groupRampMethod='Shortest'):
     log.tracef("Entereing %s.insertApp2()...", __name__)
     application='FINAL_TEST_2'
     messageQueue="Test"
@@ -607,7 +607,6 @@ def insertApp2(db):
     messageQueueId = insertMessageQueue(messageQueue, db)
     logbookId = insertLogbook(logbook, db)
     postId = insertPost(post, messageQueueId, logbookId, db)
-    groupRampMethod='Shortest'
     queueKey='Test'
     managed=1
     app2Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed, db)

@@ -6,7 +6,7 @@ Created on Dec 20, 2017
 
 import system, time
 from ils.queue.message import insert
-from ils.io.util import readTag, writeTag
+from ils.io.util import readTag, writeTag, getProviderFromTagPath
 from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
 from ils.config.common import getTagProvider
 
@@ -35,8 +35,8 @@ def dataTransferCore(tagPath, currentValue, initialChange):
     if initialChange:
         writeTag("[.]status", "Skipping write because value is an initial change value")
         return
-    
-    provider = getTagProvider()
+
+    provider = getProviderFromTagPath(tagPath)
     latency = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = readTag("[.]messageQueue").value
     db = readTag("[.]database").value
@@ -90,8 +90,8 @@ def dataTransferWithCountCore(tagPath, currentValue, initialChange):
     if initialChange:
         writeTag("[.]status", "Skipping write because value is an initial change value")
         return
-    
-    provider = getTagProvider()
+
+    provider = getProviderFromTagPath(tagPath)
     latency = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = readTag("[.]messageQueue").value
     db = readTag("[.]database").value
@@ -148,8 +148,8 @@ def dataTransferWithTimeCore(tagPath, currentValue, initialChange):
     if initialChange:
         writeTag("[.]status", "Skipping write because value is an initial change value")
         return
-    
-    provider = getTagProvider()
+
+    provider = getProviderFromTagPath(tagPath)
     latency = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = readTag("[.]messageQueue").value
     db = readTag("[.]database").value
@@ -226,8 +226,8 @@ def writeToHDA(tagPath, previousValue, currentValue, initialChange, missedEvents
     if initialChange:
         writeTag("[.]status", "Skipping write because value is an initial change value")
         return
-    
-    provider = getTagProvider()
+
+    provider = getProviderFromTagPath(tagPath)
     latency = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = readTag("[.]messageQueue").value
     db = readTag("[.]database").value

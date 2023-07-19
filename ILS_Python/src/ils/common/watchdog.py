@@ -13,8 +13,10 @@ log = getLogger(__name__)
 '''
 This is called from a gateway timer script. 
 '''
-def scanLabDataWatchdogs(projectName):    
-    log.tracef("Scanning Lab Data watchdogs for project <%s>...", projectName)
+def scanLabDataWatchdogs():
+    log.infof("Scanning Lab Data watchdogs...")
+    
+    projectName = system.project.getProjectName()
     tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
     
@@ -34,7 +36,6 @@ def scanLabDataWatchdogs(projectName):
 
 
 def labDataWatchdog(tagProvider, udtPath):
-    udtPath = "[%s]%s" % (tagProvider, udtPath)
     log.tracef("Evaluating a Lab Data Watchdog with <%s>", udtPath)
     
     vals = system.tag.readBlocking([
@@ -72,9 +73,10 @@ def labDataWatchdog(tagProvider, udtPath):
 '''
 This is called from a gateway timer script.
 '''
-def scanOpcReadWatchdogs(projectName):    
-    log.tracef("Scanning OPC Read watchdogs for project <%s>...", projectName)
+def scanOpcReadWatchdogs():    
+    log.infof("Scanning OPC Read watchdogs...")
     
+    projectName = system.project.getProjectName()    
     tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
     
@@ -85,16 +87,15 @@ def scanOpcReadWatchdogs(projectName):
                }
     udts = system.tag.browse(parentPath, filters)
    
-    log.tracef("...discovered %d Lab Data watchdog UDTs...", len(udts))
+    log.tracef("...discovered %d OPC Read Watchdog UDTs...", len(udts))
     
     for udt in udts.getResults():
         udtPath = str(udt['fullPath'])
-        log.tracef("...found %s", udtPath)
-        opcReadWatchdog(tagProvider, udtPath)
+        log.infof("...found %s", udtPath)
+        opcReadWatchdog(udtPath)
 
 
-def opcReadWatchdog(tagProvider, udtPath):
-    udtPath = "[%s]%s" % (tagProvider, udtPath)
+def opcReadWatchdog(udtPath):
     log.tracef("Evaluating an opcReadWatchdog with <%s>", udtPath)
     
     vals = system.tag.readBlocking([udtPath+"/tag", 
@@ -155,9 +156,10 @@ def opcReadWatchdog(tagProvider, udtPath):
 '''
 This is called from a gateway timer script.
 '''
-def scanOpcWriteWatchdogs(projectName):
-    log.tracef("Scanning OPC write watchdogs for project <%s>...", projectName)
+def scanOpcWriteWatchdogs():
+    log.infof("Scanning OPC write watchdogs...")
 
+    projectName = system.project.getProjectName()
     tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
     
@@ -181,7 +183,6 @@ Occasionally, Ignition needs to reset the tag as a signal that Ignition is alive
 then the DCS concludes that Ignition is dead. 
 '''
 def opcWriteWatchdog(tagProvider, udtPath):
-    udtPath = "[%s]%s" % (tagProvider, udtPath)
     log.tracef("Evaluating an opcWriteWatchdog with <%s>", udtPath)
     
     vals = system.tag.readBlocking([udtPath+"/tag", 
@@ -240,9 +241,10 @@ def opcWriteWatchdog(tagProvider, udtPath):
 '''
 This is called from a gateway timer script. 
 '''
-def scanHdaReadWatchdogs(projectName):    
-    log.tracef("Scanning HDA Read watchdogs for project <%s>...", projectName)
+def scanHdaReadWatchdogs():    
+    log.tracef("Scanning HDA Read watchdogs...")
     
+    projectName = system.project.getProjectName()
     tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
     
@@ -261,7 +263,6 @@ def scanHdaReadWatchdogs(projectName):
         opcHdaReadWatchdog(tagProvider, udtPath)
 
 def opcHdaReadWatchdog(tagProvider, udtPath):
-    udtPath = "[%s]%s" % (tagProvider, udtPath)
     log.tracef("Evaluating an opcHdaReadWatchdog with <%s>", udtPath)
     
     vals = system.tag.readBlocking([udtPath+"/serverName",
