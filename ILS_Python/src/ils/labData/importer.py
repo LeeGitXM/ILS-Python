@@ -6,68 +6,12 @@ Created on Mar 10, 2015
 # Import the standard Python XML parsing library    
 import xml.etree.ElementTree as ET
 import sys, system, string, traceback
-#from ils.migration.common import lookupOPCServerAndScanClass
 #from ils.migration.common import lookupHDAServer
 from ils.common.database import getUnitId
 from ils.common.database import getPostId
 from ils.common.database import lookup
 from ils.common.cast import toBit
 migrationDatabase = "XOMMigration"
-
-def insertLabTableIntoDB(container):
-    print "In migration.labData.insertLabTableIntoDB()"
-
-    filename = container.getComponent('File Field').text
-    
-    if not(system.file.fileExists(filename)):
-        system.gui.errorBox("The import file (" + filename + ") does not exist. Please specify a valid filename.")  
-        return
-
-    tree = ET.parse(filename)
-    root = tree.getroot()
-
-    for table in root.findall('console'):
-        post = table.get("post")
-        postId = getPostId(post)
-        displayOrder = table.get("dataOrder")
-        displayFlag = table.get("showInList")
-        from ils.common.cast import toBit
-        displayFlag = toBit(displayFlag)
-        displayTableTitle = table.get("description")
-        oldTableName = table.get("consoleName")
-        displayPage = 1
-        
-        if postId > 0:
-            SQL = "select DisplayTableId from LtDisplayTable where DisplayTableTitle = '%s'" % (displayTableTitle)
-            displayTableId = system.db.runScalarQuery(SQL)
-        
-            if displayTableId == None:
-                SQL = "insert into LtDisplayTable (DisplayTableTitle, postId, DisplayPage, DisplayOrder, DisplayFlag, OldTableName) values " \
-                    "('%s', %i, %i, %s, %s, '%s')" % (displayTableTitle, postId, displayPage, displayOrder, displayFlag, oldTableName)
-                print SQL
-                displayTableId = system.db.runUpdateQuery(SQL, getKey=1)
-        
-            print "%s - %s - %s - %s" % (oldTableName, displayTableTitle, displayFlag, displayOrder)
-            order = 1
-            for labData in table.findall('labData'):
-                # There is only room for one description, and it came from the other file, so ignore this one
-                labDescription = labData.get("labDescription")
-                valueName = labData.get("labDataName")
-                
-                SQL = "Select ValueId from LtValue where ValueName = '%s' " % (valueName)
-                valueId = system.db.runScalarQuery(SQL)
-                
-                if valueId != None:
-                    print "     Setting display table for %s" % (valueName)
-                    SQL = "insert into LtDisplayTableDetails (DisplayTableId, ValueId, DisplayOrder) values (%d, %d, %d)" % (displayTableId, valueId, order)
-                    system.db.runUpdateQuery(SQL)
-                    order = order + 1
-                else:
-                    print "**** ERROR: value <%s> is not defined ****" % (valueName) 
-        else:
-            print "Skipping %s because a post <%s> was not found!" % (displayTableTitle, post)
-            
-    print "Done!"
 
 
 
@@ -96,8 +40,7 @@ def insertIntoDB(container):
     #----------------------------------------------------
     
     filename = container.getComponent('File Field').text
-    provider = container.getComponent("Tag Provider").text
-    site = container.parent.getComponent("Site").text
+    site = "ABC"
     
     if not(system.file.fileExists(filename)):
         system.gui.errorBox("The import file (" + filename + ") does not exist. Please specify a valid filename.")  
@@ -218,8 +161,9 @@ def insertIntoDB(container):
                     if phase == 1:
                         print "   Creating..."
                         valueId=insertLabValue(labData, unitName)
-                        localValueId=insertLocalLabValue(labData, valueId, site)
-                        insertValidityLimit(labData,valueId)
+                        insertLocalLabValue(labData, valueId)
+                        insertValidityLimit(labData, valueId)
+                        insertDisplayTable(labData, valueId)
                         loaded=loaded+1
                         print "   ...done!"
                     
@@ -237,21 +181,6 @@ def insertIntoDB(container):
             
     print "Done - Successfully loaded %i lab data objects, %i were skipped, %i already exist." % (loaded, skipped, alreadyExists)
 
-def lookupHDAInterfaceCRAP(site, interfaceName):
-    print "Old interface: ", interfaceName
-    # Translate from the old G2 interface name to the Ignition Interface name
-    serverName,  = lookupHDAServer(site, interfaceName)
-    print "New interface: ", serverName
-    
-    SQL = "select InterfaceId from LtHDAInterface where InterfaceName = '%s'" % (serverName)
-    print SQL
-    interfaceId = system.db.runScalarQuery(SQL)
-    if interfaceId == None:
-        SQL = "insert into LtHDAInterface (InterfaceName) values ('%s')" % (serverName)
-        print SQL
-        interfaceId=system.db.runUpdateQuery(SQL, getKey=1)
-    return interfaceId
-
 
 # Insert a record into the main lab data catalog
 def insertLabValue(labData, unitName):
@@ -265,6 +194,10 @@ def insertLabValue(labData, unitName):
     else:
         validationProcedure = "'%s'" % (validationProcedure)
     unitId = getUnitId(unitName)
+
+    if unitId == None:
+        print "Unable to find unit: <%s> in TkUnit" % (unitName)
+        return None
 
     SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, UnitId, ValidationProcedure) "\
         " values ('%s', '%s', %s, %s, %s)" % (valueName, description, str(displayDecimals), str(unitId), validationProcedure)
@@ -291,27 +224,55 @@ def insertSelector(labData, valueId, hasValidityLimit, hasSQCLimit, hasReleaseLi
 
 
 # Insert a record into the main lad data catalog
-def insertLocalLabValue(labData, valueId, site):
+def insertLocalLabValue(labData, valueId):
     print "      Inserting into LtLocalValue..."
-    itemId = labData.get("phd-result-flag-item-id")
-    interfaceName = labData.get("phd-result-flag-interface-name")
+    itemId = labData.get("phd-item-id")
+    interfaceName = labData.get("phd-interface-name")
+    
+    print "Using HDA interface: ", interfaceName 
+    print "Using item id: ", itemId 
     
     if interfaceName == None:
         SQL = "insert into LtLocalValue (ValueId) values (%s)" % (str(valueId))
     else:
-        serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+        interfaceId = lookupHDAServer(interfaceName)
     
-        if writeLocationId < 0:
-            print "Unable to find interface: %s for site: %s in the InterfaceTransalation table!" % (interfaceName, site)
+        if interfaceId < 0:
+            print "Unable to find interface: %s!" % (interfaceName)
             SQL = "insert into LtLocalValue (ValueId) values (%s)" % (str(valueId))
         else:
-            SQL = "insert into LtLocalValue (ValueId, ItemId, WriteLocationId) "\
-                " values (%s, '%s', %s)" % (str(valueId), itemId, str(writeLocationId))
+            SQL = "insert into LtLocalValue (ValueId, ItemId, InterfaceId) "\
+                " values (%s, '%s', %s)" % (str(valueId), itemId, str(interfaceId))
 
     print SQL
     localValueId=system.db.runUpdateQuery(SQL, getKey=1)
     print "      ...assigned id %i to the local lab value" % (localValueId)
     return localValueId
+
+
+def insertDisplayTable(labData, valueId):
+    print "In insertDisplayTable()"
+
+    displayTableTitle = labData.get("display-table", None)
+    
+    if displayTableTitle == None:
+        print "A display table was not specified"
+        return
+    
+    SQL = "select DisplayTableId from LtDisplayTable where DisplayTableTitle = '%s'" % (displayTableTitle)
+    displayTableId = system.db.runScalarQuery(SQL)
+
+    if displayTableId == None:
+        print "Warning - undefined display table: <%s>" % (displayTableTitle)
+        return
+    
+    ''' Maybe I should select max() '''    
+    order = 1
+    
+    print "     Insert into display table %s" % (displayTableTitle)
+    SQL = "insert into LtDisplayTableDetails (DisplayTableId, ValueId, DisplayOrder) values (%d, %d, %d)" % (displayTableId, valueId, order)
+    system.db.runUpdateQuery(SQL)
+    order = order + 1
 
 
 def insertPHDLabValue(labData, valueId, site):
@@ -558,68 +519,31 @@ def insertReleaseLimit(labData, valueId):
 
 #
 def insertValidityLimit(labData, valueId):
-    print "      Inserting a validity limit..."
+    '''
+    Validity limits are option.  There must be an upper and lower limit.
+    The limits are constants - there is a more complicated scheme for reading these from recipe, but for import purposes, 
+    we only support constants.
+    '''
 
-    # Each of these for loops should find exactly 1 match.
-    # The main thing we need to extract is the parameter name - the structure of the recipe database has changed so the upper and lower limit
-    # use the same name, so I only need to extract one.  I need to extract the real name from the name in the export by stripping off the
-    # _upper and _lower.
-    # For the actual limits, these will be overwritten as soon as the first grade change occurs, so they are not terribly important.  
-    # The upper and lower limit values are not in the export, so just use the validity limits as the SQC limits for starters.
-    for upperLimit in labData.findall('upperValidityLimit'):
-        upperValidityLimit = upperLimit.get("value")
-    for lowerLimit in labData.findall('lowerValidityLimit'):
-        lowerValidityLimit = lowerLimit.get("value")
-    
-    # The upper and lower limits may either come from recipe (ODBC), the DCS (OPC), or a constant.  If it comes from recipe, then the upper and 
-    # lower limits are both in the same recipe record so only a single parameter name is need, therefore the lower limit isn't even 
-    # processed.  If the limit comes from the DCS, the the upper and lower limit have unique item ids.  So look at the upper limit, 
-    # determine if it is ODBC or OPC.  If it is OPC then process the lower limit.  
+    upperValidityLimit = labData.get("upper-validity-limit", None)
+    lowerValidityLimit = labData.get("lower-validity-limit", None)
 
-    typeId = lookup("RtLimitType", "Validity")
-    limitClass = lowerLimit.get("class")
-    if limitClass == "ODBC-LIMIT-FOR-SQC":
-        recipeParameterName = lowerLimit.get("column-qualifier")   
-
-        print "         The recipe parameter name is: ", recipeParameterName
-        recipeParameterName=string.upper(recipeParameterName[:recipeParameterName.find('_llimit')])
-        print "         ...has been shortened to: ", recipeParameterName
-    
-        # The limit values are not stored in the XML export, they will get loaded from recipe at run time, so just use some absurd constants
-        upperLimit=1000.0
-        lowerLimit=-1000.0
-    
-        sourceId = lookup("RtLimitSource", "Recipe")
-        SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, UpperValidityLimit, LowerValidityLimit, RecipeParameterName) "\
-            " values (%s, %s, %s, %s, %s, '%s')" \
-            % (str(valueId), str(typeId), str(sourceId), str(upperLimit), str(lowerLimit), recipeParameterName)
-        system.db.runUpdateQuery(SQL)
-        print "      ...inserted a record into LtLimit..."
-    elif limitClass == "OPC-FLOAT-BAD-FLAG":
-        upperItemId = upperLimit.get("item-id")
-        lowerItemId = lowerLimit.get("item-id")   
-
-        print "         The Item-Ids are: %s and %s" % (upperItemId, lowerItemId)
-    
-        typeId = lookup("RtLimitType", "Release")
-        sourceId = lookup("RtLimitSource", "DCS")
-        SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, OPCUpperItemId, OPCLowerItemId) "\
-            " values (%s, %s, %s, '%s', '%s')" \
-            % (str(valueId), str(typeId), str(sourceId), upperItemId, lowerItemId)
-        system.db.runUpdateQuery(SQL)
-        print "      ...inserted a record into LtLimit..."
-    elif limitClass == "FLOAT-PARAMETER":
-        upperValue = upperLimit.get("value")
-        lowerValue = lowerLimit.get("value")
-        sourceId = lookup("RtLimitSource", "Constant")
-        SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, UpperValidityLimit, LowerValidityLimit) "\
-            " values (%s, %s, %s, %s, %s)" \
-            % (str(valueId), str(typeId), str(sourceId), str(upperValue), str(lowerValue))
-        system.db.runUpdateQuery(SQL)
-        print "      ...inserted a record into LtLimit..."
+    print "Upper Limit: ", upperValidityLimit
+    print "Lower Limit: ", lowerValidityLimit
         
-    else:
-        print "**** Unexpected SQC limit class: <%s> ****" % (limitClass)
+    if upperValidityLimit == None or lowerValidityLimit == None:
+        print '  --- limits are not specified ---'
+        return
+
+    print "      Inserting a validity limit..."
+    typeId = lookup("RtLimitType", "Validity")
+    sourceId = lookup("RtLimitSource", "Constant")
+    SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, UpperValidityLimit, LowerValidityLimit) "\
+        " values (%s, %s, %s, %s, %s)" \
+        % (str(valueId), str(typeId), str(sourceId), str(upperValidityLimit), str(lowerValidityLimit))
+    system.db.runUpdateQuery(SQL)
+    print "      ...inserted a record into LtLimit..."
+
 
 def createTags(rootContainer):
     print "In labData.createTags()"
@@ -636,7 +560,7 @@ def createTags(rootContainer):
     def createLabValue(labData, provider, unitName):    
         UDTType='Lab Data/Lab Value'
         labDataName = labData.get("name")
-        path = "LabData/" + unitName + "/"
+        path = "LabData/" + unitName
         parentPath = '[' + provider + ']' + path    
         tagPath = parentPath + "/" + labDataName
         tagExists = system.tag.exists(tagPath)
@@ -734,6 +658,16 @@ def createTags(rootContainer):
     
     # Create a validity limit UDT object
     def createLabLimitValidity(labData, labDataName, provider, unitName):    
+        upperValidityLimit = labData.get("upper-validity-limit", None)
+        lowerValidityLimit = labData.get("lower-validity-limit", None)
+    
+        print "Upper Limit: ", upperValidityLimit
+        print "Lower Limit: ", lowerValidityLimit
+            
+        if upperValidityLimit == None or lowerValidityLimit == None:
+            print '  --- validity limits are not specified ---'
+            return
+        
         UDTType='Lab Data/Lab Limit Validity'
         labDataName = labDataName + "-VALIDITY"
         path = "LabData/" + unitName + '/'
@@ -748,12 +682,16 @@ def createTags(rootContainer):
             system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
                 attributes={"UDTParentType":UDTType})
             action = "Loaded"
+            
+        ''' Write the constant values to the tags '''
+        tagPath = parentPath + labDataName
+        system.tag.writeAsync([tagPath + "/upperValidityLimit", tagPath + "/lowerValidityLimit"], [upperValidityLimit, lowerValidityLimit])
         return action
 
     #---------------------------------------------------------------------------    
     filename = rootContainer.getComponent('File Field').text
     provider = rootContainer.getComponent("Tag Provider").text
-    site = rootContainer.parent.getComponent("Site").text
+    site = "ABC"
     itemIdPrefix = rootContainer.getComponent("Item Id Prefix").text
     
     if not(system.file.fileExists(filename)):
@@ -963,4 +901,14 @@ def loadUnitParameters(container):
 
     print "Done - Successfully processed %i unit parameters." % (loaded)
 
+def lookupHDAServer(hdaInterfaceName):
+    SQL = "select interfaceId from LtHDAInterface where InterfaceName = '%s'" % (hdaInterfaceName)
+    print SQL
+    pds = system.db.runQuery(SQL)
+    if len(pds) != 1:
+        print "Error looking up HDA interface <%s> in LtHDAInterface table" % (hdaInterfaceName)
+        return -1
     
+    interfaceId = pds[0]["interfaceId"]
+    
+    return interfaceId
