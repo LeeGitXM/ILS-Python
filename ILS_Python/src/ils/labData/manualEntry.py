@@ -80,19 +80,38 @@ def chooserInitialization(rootContainer):
 # This is call from the "Enter Data" button on the "Manual Entry Value Chooser" screen
 def launchEntryForm(rootContainer):
     print "Launching the Manual Lab Data Entry Form"
+    post = rootContainer.post
     chooseList = rootContainer.getComponent("List")
     ds=chooseList.data
-    idx=chooseList.selectedIndex
-    if idx < 0:
-        system.gui.warningBox("Please select a Lab Parameter and then press 'Enter Data'")
-        return
-    valueName=ds.getValueAt(idx,'ValueName')
-    valueId=ds.getValueAt(idx,'ValueId')
+    selections = chooseList.getSelectedIndices()
+    print "The selections are: ", selections
     
-    print "Editing %s - %s" % (valueName, str(valueId))
+    if len(selections) == 1:
+        idx=chooseList.selectedIndex
+        if idx < 0:
+            system.gui.warningBox("Please select a Lab Parameter and then press 'Enter Data'")
+            return
+        valueName=ds.getValueAt(idx,'ValueName')
+        valueId=ds.getValueAt(idx,'ValueId')
+        
+        print "Editing %s - %s" % (valueName, str(valueId))
+        
+        window=system.nav.openWindow("Lab Data/Manual Entry",{"valueName": valueName, "valueId":valueId})
+        system.nav.centerWindow(window)
+    elif len(selections) > 1:
+        print "Launch the entry table!"
+        valueNames = []
+        valueIds = []
+        for selection in selections:
+            valueName=ds.getValueAt(selection,'ValueName')
+            valueNames.append(valueName)
+            
+            valueId=ds.getValueAt(selection,'ValueId')
+            valueIds.append(str(valueId))
     
-    window=system.nav.openWindow("Lab Data/Manual Entry",{"valueName": valueName, "valueId":valueId})
-    system.nav.centerWindow(window)
+        window=system.nav.openWindow("Lab Data/Manual Entry Table",{"post": post, "valueNames": ",".join(valueNames), "valueIds": ",".join(valueIds)})
+        system.nav.centerWindow(window)
+
     
 def entryFormInitialization(rootContainer):
     print "In ils.labData.manualEntry.entryFormInitialization()..."
