@@ -771,7 +771,7 @@ def storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvi
 
 # This should be the only place anywhere that inserts into the LtHistory table.
 def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, database=""):
-    log.tracef("Inserting %s (%d) %s at %s for grade %s", valueName, valueId, str(rawValue), str(sampleTime), str(grade))
+    log.infof("Inserting %s (%d) %s at %s for grade %s", valueName, valueId, str(rawValue), str(sampleTime), str(grade))
     success = True  # If the row already exists then consider it a success
     insertedRows = 0
 
@@ -786,22 +786,34 @@ def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, dat
     if sampleTime.find(".") > 0:
         sampleTime = sampleTime[:sampleTime.find(".")]
 
-    SQL = "select count(*) from LtHistory where valueId = %i and RawValue = %s and SampleTime = '%s'" % (valueId, str(rawValue), sampleTime)
+    SQL = "select count(*) from LtHistory where valueId = %d and RawValue = %s and SampleTime = '%s'" % (valueId, str(rawValue), sampleTime)
     rows = system.db.runScalarQuery(SQL, database)
     if rows == 0:
         try:
-            # Step 1 - Insert the value into the lab history table.
-            SQL = "insert into LtHistory (valueId, RawValue, Grade, SampleTime, ReportTime) values (%i, %s, '%s', '%s', getdate())" % (valueId, str(rawValue), grade, sampleTime)
-            historyId = system.db.runUpdateQuery(SQL, database, getKey=1)
-            log.tracef("...inserted value with history id: %d", historyId)
+            '''
+            Step 1 - Insert the value into the lab history table.
+            Check if this is an update to the last entered value - Look for a record with the same time stamp 
+            '''
+            SQL = "select HistoryId from LtHistory where valueId = %d and SampleTime = '%s'" % (valueId, sampleTime)
+            historyId = system.db.runScalarQuery(SQL, database)
             
+            if historyId == None:
+                log.infof("Inserting a new lab value")
+                SQL = "insert into LtHistory (valueId, RawValue, Grade, SampleTime, ReportTime) values (%d, %s, '%s', '%s', getdate())" % (valueId, str(rawValue), grade, sampleTime)
+                historyId = system.db.runUpdateQuery(SQL, database, getKey=1)
+                log.tracef("...inserted value with history id: %d", historyId)
+            else:
+                log.infof("Updating an existing lab value")
+                SQL = "update LtHistory set RawValue=%s, ReportTime=getdate() where historyId=%d" % (str(rawValue), historyId)
+                system.db.runUpdateQuery(SQL, database)
+
             # Step 2 - Update LtValue with the id of the latest history value
             SQL = "update LtValue set LastHistoryId = %d where valueId = %d" % (historyId, valueId)
             system.db.runUpdateQuery(SQL, database)
             success = True
             insertedRows = 1
         except:
-            log.errorf("Failed to insert into a lab value for %s-%i, %s at %s, grade: %s", valueName, valueId, str(rawValue), str(sampleTime), str(grade))
+            log.errorf("Failed to insert into a lab value for %s-%d, %s at %s, grade: %s", valueName, valueId, str(rawValue), str(sampleTime), str(grade))
             success = False
     else:
         ''' This isn't an error, due to timing we may get the same values twice, the check is just to prevent duplicates. '''

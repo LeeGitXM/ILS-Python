@@ -89,7 +89,7 @@ def newLabDataMessageHandler(payload):
                 configureLabDatumTable(template, db)
 
 #  This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
-def configureLabDatumTable(container, db):
+def configureLabDatumTable(container, db=""):
     username = system.security.getUsername()
     log.tracef("In %s.configureLabDatumTable(), checking for lab data viewed by %s", __name__, username)
     valueName=container.LabValueName
