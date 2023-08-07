@@ -962,6 +962,7 @@ def resetDiagram(finalDiagnosisIds, database):
             upstreamBlocks = []
             blocksUpstreamOfLatch = []
             for block in blocks:
+                print "Block: ", block
                 blockName = block.getName()
                 blockClass = stripClassPrefix(block.getClassName())
                 log.infof("Found %s, a %s...", blockName, blockClass)
@@ -1013,15 +1014,15 @@ def resetDiagram(finalDiagnosisIds, database):
                     log.info("   ... resetting a %s named: %s..." % (blockClass, blockName))
                     
                     # Resetting a block sets its state to UNSET, which does not propagate. 
-                    resetBlock(diagramName, blockName)
+                    resetBlock(parentDiagramName, blockName)
                     
                     # Now set the state to UNKNOWN, then propagate
-                    setBlockState(diagramName, blockName, "UNKNOWN")
-                    propagateBlockState(diagramName, blockName)
+                    setBlockState(parentDiagramName, blockName, "UNKNOWN")
+                    propagateBlockState(parentDiagramName, blockName)
 
                 elif blockClass == "Inhibitor":
                     log.infof("   ... setting a <%s> named <%s> on <%s> to inhibit!", blockClass, blockName, diagramName)
-                    sendSignal(diagramName, blockName, "INHIBIT", "")
+                    sendSignal(parentDiagramName, blockName, "INHIBIT", "")
                     
                 else:
                     log.tracef("   ...skipping a %s...", blockClass)
@@ -1072,16 +1073,20 @@ def partialResetDiagram(finalDiagnosisIds, database):
                 '''
                 if blockClass == "LogicFilter":
                     log.infof("   ... found a logic filter named: %s on  %s...", blockName, diagramName)
-                    resetBlock(diagramName, blockName)
+                    blockAttributes = block.getAttributes()
+                    parentDiagramName = blockAttributes.get("parent", None)
+                    resetBlock(parentDiagramName, blockName)
                 
                 elif blockClass in ["SQC", "SQCDiagnosis", "TrendDetector"]:
                     # Set the state to UNKNOWN, then propagate
                     log.infof("   ... setting a %s named: %s to UNKNOWN...", blockClass, blockName)
-                    setBlockState(diagramName, blockName, "UNKNOWN")
-                    propagateBlockState(diagramName, blockName)
+                    blockAttributes = block.getAttributes()
+                    parentDiagramName = blockAttributes.get("parent", None)
+                    setBlockState(parentDiagramName, blockName, "UNKNOWN")
+                    propagateBlockState(parentDiagramName, blockName)
             
-                    if diagramName not in diagramNames:
-                        diagramNames.append(diagramName)
+                    if parentDiagramName not in diagramNames:
+                        diagramNames.append(parentDiagramName)
     
     '''
     I'm not 100% sure how this worked in G2, do I put the watermark just on the diagram that has the final diagnosis or on all diagrams that have a block that 
