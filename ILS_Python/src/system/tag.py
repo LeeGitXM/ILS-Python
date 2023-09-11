@@ -24,6 +24,9 @@ def exists(tagPath):
 def getAttribute(tagPath, attr):
     return ""
 
+def getConfiguration(fullTagPath, recursive):
+    return ""
+
 def getTagValue(tagPath):
     return ""
 
@@ -38,6 +41,9 @@ def queryTagHistory():
 def read(tagPath):
     return 0.0
 
+def readBlocking( tagPaths ):
+    return 0.0
+
 def readAll(paths):
     return []
 
@@ -48,6 +54,9 @@ def removeTags(paths):
     return []
 
 def write(tagPath,command):
+    pass
+
+def writeBlocking(tagPath, value, timeout=45000):
     pass
 
 def writeSynchronous(tagPath, value):
