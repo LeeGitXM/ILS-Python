@@ -6,8 +6,8 @@ Created on Dec 17, 2015
 
 from ils.sfc.common.constants import NAME, MSG_STATUS_ERROR, CONFIRM_CONTROLLERS_CONFIG, ERROR_COUNT_KEY, ERROR_COUNT_MODE, ERROR_COUNT_SCOPE, COUNT_ABSOLUTE, \
     CHART_SCOPE, STEP_SCOPE, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE
-from ils.sfc.gateway.api import getChartLogger, getIsolationMode, notifyGatewayError, handleUnexpectedGatewayError, getStepProperty, postToQueue
-from system.ils.sfc import getConfirmControllersConfig, getProviderName
+from ils.sfc.gateway.api import getChartLogger, getIsolationMode, notifyGatewayError, handleUnexpectedGatewayError, getStepProperty, postToQueue, getProviderName
+from system.ils.sfc import getConfirmControllersConfig
 from ils.io.api import confirmControllerMode
 from ils.sfc.recipeData.api import s88Get, s88Set
 
@@ -18,7 +18,7 @@ def activate(scopeContext, stepProperties, state):
 
     # Everything will have the same tag provider - check isolation mode and get the provider
     isolationMode = getIsolationMode(chartScope)
-    providerName = getProviderName(isolationMode)
+    providerName = getProviderName(chartScope)
     logger.tracef("Isolation mode: %s, provider: %s", isolationMode, providerName)
 
     try:

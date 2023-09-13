@@ -72,7 +72,7 @@ def setLogLevels():
 
 
 def client():
-    print "In %s.client()" % (__name__)
+    log.infof("In %s.client()", __name__)
     
     '''
     Every site needs to run this, which sets the menus, so save the user from having to call this.
@@ -182,9 +182,8 @@ def clientCommon():
         system.nav.centerWindow(window)
     
     '''
-    --- With Ignition 8 where wach site has it's own site specific project we do not have all of the consoles in the project or in the menu ---
-    Remove unwanted consoles.  Remember that there is a single project that contains all of the consoles for the Baton Rouge complex.
-    This determines which consoles are appropriate for the site by querying the console definition table in the site specific database.
+    With Ignition 8 where each site has it's own site specific project we do not have all of the consoles in the project 
+    or in the menu so there is nothing that needs to be removed.
     '''
     
     '''

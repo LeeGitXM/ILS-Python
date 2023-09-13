@@ -4,4 +4,4 @@ Created on Jul 31, 2015
 @author: Pete
 '''
 def version():
-    return "3.2r0", "January 11, 2023"
+    return "3.6r0", "September 13, 2023"
