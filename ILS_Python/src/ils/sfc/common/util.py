@@ -72,15 +72,15 @@ def chartIsRunning(chartPath, isolationMode=False):
     ''' We found a running chart, determine if the isolation Mode of the running chart matches the desired isolation mode.'''
     for row in range(ds.rowCount):
         chartState = str(ds.getValueAt(row, "ChartState"))
-        log.tracef("The chart state is: <%s>", str(chartState))
+        log.infof("The chart state is: <%s>", str(chartState))
         if string.upper(chartState) in ["RUNNING", "PAUSED"]:
             instanceId = ds.getValueAt(row, "instanceId")
-            log.tracef("...found a running chart with instance id: %s", instanceId)
+            log.infof("...found a running chart with instance id: %s", instanceId)
             chartVars = system.sfc.getVariables(instanceId)
-            log.tracef("Chart variables: %s", str(chartVars))
+            log.infof("Chart variables: %s", str(chartVars))
 
             instanceIsolationMode = chartVars.get("isolationMode", None)
-            log.tracef("Running chart isolation mode: %s", str(instanceIsolationMode))
+            log.infof("Running chart isolation mode: %s", str(instanceIsolationMode))
             
             if instanceIsolationMode == isolationMode:
                 log.infof("The chart IS already running!")

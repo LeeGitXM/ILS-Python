@@ -4,7 +4,7 @@ Created on Jul 9, 2014
 @author: chuckc
 '''
 import ils.io.recipe as recipe
-from ils.io.util import readTag
+from ils.io.util import readTag, isNaN
 import system, string, time
 import ils.io.opcoutput as opcoutput
 import ils.io.opcconditionaloutput as opcconditionaloutput
@@ -30,7 +30,6 @@ class RecipeDetail(recipe.Recipe):
 
 
     def writeRecipeDetail(self, newValue, newHighLimitValue, newLowLimitValue):
-    
         log.infof("In RecipeDetail::writeRecipeDetail() with <%s>: %s - %s - %s", self.path, str(newValue), str(newHighLimitValue), str(newLowLimitValue))
         
         rootPath=self.path[0:self.path.rfind('/')+1]
@@ -62,7 +61,7 @@ class RecipeDetail(recipe.Recipe):
         type of object here and then dispatch the method correctly
         '''
         spTagName = vals[2].value
-        print "The SP tag name is: <%s>" % (spTagName)
+        log.tracef("   the SP tag name is: <%s>", spTagName)
         if spTagName not in ["", "0"] and newValue not in ["", None]:
             self.pythonClass = readTag(rootPath + spTagName + "/pythonClass").value
             
@@ -80,12 +79,12 @@ class RecipeDetail(recipe.Recipe):
         rootPath=self.path[0:self.path.rfind('/')+1]
 
         if self.writeHighLimit:
-            oldHighLimitValue = readTag(self.highLimitTag.path + '/value').value             
-            log.trace("Changing High limit from %s to %s" % (str(oldHighLimitValue), str(newHighLimitValue)))
+            oldHighLimitQV = readTag(self.highLimitTag.path + '/value')             
+            log.trace("Changing High limit from %s to %s" % (str(oldHighLimitQV.value), str(newHighLimitValue)))
 
         if self.writeLowLimit:
-            oldLowLimitValue = readTag(self.lowLimitTag.path + '/value').value 
-            log.trace("Changing Low limit from %s to %s" % (str(oldLowLimitValue), str(newLowLimitValue)))
+            oldLowLimitQV = readTag(self.lowLimitTag.path + '/value') 
+            log.trace("Changing Low limit from %s to %s" % (str(oldLowLimitQV.value), str(newLowLimitValue)))
 
         if self.writeSp:
             oldValue = readTag(self.spTag.path + '/value').value
@@ -100,7 +99,7 @@ class RecipeDetail(recipe.Recipe):
         
         # If moving the upper limit up then writ it before the value
         if self.writeHighLimit:
-            if float(newHighLimitValue) > float(oldHighLimitValue):
+            if isNaN(oldHighLimitQV) or float(newHighLimitValue) > float(oldHighLimitQV.value):
                 log.trace("** Writing the high limit: %s **" % (str(newHighLimitValue)))
                 highLimitWritten = True
                 confirmed, r = self.highLimitTag.writeDatum(newHighLimitValue)
@@ -111,7 +110,7 @@ class RecipeDetail(recipe.Recipe):
 
         # If moving the upper limit up then writ it before the value
         if self.writeLowLimit:
-            if float(newLowLimitValue) < float(oldLowLimitValue):
+            if isNaN(oldLowLimitQV) or float(newLowLimitValue) < float(oldLowLimitQV.value):
                 log.trace("** Writing the Low limit: %s **" % (str(newLowLimitValue)))
                 lowLimitWritten = True
                 confirmed, r = self.lowLimitTag.writeDatum(newLowLimitValue)

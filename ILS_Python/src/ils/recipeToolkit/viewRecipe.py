@@ -214,7 +214,7 @@ def initialize(rootContainer):
 # Reset all of the recipe detail objects.  This really isn't necessary for the detail objects that
 # were newly created, but is necessary for ones that were existing
 def resetRecipeDetails(provider, familyName):
-    log.infof("In %s.resetRecipeDetails()...", __name__)
+    log.infof("In %s.resetRecipeDetails() with provider: <%s>, family: <%s>...", __name__, provider, familyName)
             
     tags = []
     vals = []

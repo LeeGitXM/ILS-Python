@@ -12,7 +12,8 @@ import ils.io.opctag as basicio
 import string
 import system
 import time
-from ils.io.util import confirmWrite, readTag, getProviderFromTagPath
+import math
+from ils.io.util import confirmWrite, readTag, getProviderFromTagPath, writeNaN
 
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -66,10 +67,11 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
         log.info("Writing <%s>, <%s>, <confirm: %s> to %s, an OPCConditionalOutput" % (str(val), str(valueType), str(confirm), self.path))
         msg = ""
 
-        if val == None:
+        if val == None or string.upper(str(val)) == 'NAN':
+            log.infof("Writing a NaN...")
             val = float("NaN")
 
-        log.trace("Initializing %s status and  to False" % (self.path))                   
+        log.trace("Initializing %s writeConfirmed, writeStatus, and writeErrorMessage" % (self.path))                   
         system.tag.writeBlocking([self.path + "/writeConfirmed", self.path + "/writeStatus", self.path + "/writeErrorMessage"], [False, "", ""])
                                
         status,reason = self.checkConfig()
@@ -113,8 +115,14 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
             
         # If we got this far, then the permissive was successfully written (or we don't care about confirming it, so
         # write the value to the OPC tag
-        log.trace("  Writing value <%s> to %s/tag" % (str(val), self.path))
-        system.tag.writeBlocking([self.path + "/value", self.path + "/writeStatus"], [val, "Writing value"])
+        log.tracef("  Writing value <%s> to %s/value", str(val), self.path)
+        if string.upper(str(val)) == 'NAN':
+            log.tracef("Writing a NaN to %s", __name__, self.path)
+            writeNaN(self.path + "/value")
+        else:
+            system.tag.writeBlocking([self.path + "/value"], [val])
+        
+        system.tag.writeBlocking([self.path + "/writeStatus"], ["Writing value"])
         status = True
 
         if confirm:

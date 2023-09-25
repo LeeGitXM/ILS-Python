@@ -14,7 +14,7 @@
 '''
 
 import string
-from ils.io.util import getProviderFromTagPath, readTag, writeTag
+from ils.io.util import getProviderFromTagPath, readTag, writeTag, isNaN
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -39,11 +39,12 @@ class OPCTag():
             return status, reason
         
         ''' Read the value and check the quality.  If NaN causes the tag to appear bad then we will need to look at the specific reason. '''
-        val = readTag(self.path + "/value")
-        if val.quality.isGood() or str(val.quality) in ['Tag Evaluation Error', 'foo']:
+        qv = readTag(self.path + "/value")
+
+        if qv.quality.isGood() or isNaN(qv) or "Tag Evaluation Error" in str(qv.quality):
             return True, ""
             
-        return False, "Tag is bad: %s" % (val.quality)
+        return False, "Tag is bad: %s" % (qv.quality)
 
     def confirmControllerMode(self, newVal, testForZero, checkPathToValve, outputType):
         ''' This check doesn't make sense for a simple OPC tag, always return True. '''
@@ -61,7 +62,7 @@ class OPCTag():
         return confirmation, errorMessage
     
     def writeDatum(self, val, valueType=""):
-        ''' his is a very simple write  '''
+        ''' This is a very simple write  '''
 
         if val == None or string.upper(str(val)) == 'NAN':
             val = float("NaN")

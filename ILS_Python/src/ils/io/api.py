@@ -355,7 +355,8 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
         
     else:
         ''' The 'Tag" is either a simple memory tag or an simple OPC tag '''
-        log.trace("Checking the basic configuration for a simple write to %s..." % (tagPath))
+        log.trace("The target is a simple tag...")
+        log.trace("Checking the basic configuration for a write to a simple tag %s..." % (tagPath))
         
         ''' Check that the tag exists and writing is enabled '''
         
@@ -365,6 +366,11 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
             return configOK, errorMessage
         
         log.trace("Simple write of %s to %s..." % (str(val), tagPath))
+        
+        if val == None or string.upper(str(val)) == 'NAN':
+            log.infof("Writing a NaN...")
+            val = float("NaN")
+            
         status = writeTag(tagPath, val)
         if status == 0:
             success = False
@@ -511,7 +517,7 @@ def writeMessageHandler(payload):
     for tagDict in tagList:
         
         def worker(command=command, tagDict=tagDict, i=i):
-            log.tracef("In worker, i: %d, command: %s, tagDict: %s", i, command, str(tagDict))
+            log.tracef("In writeMessageHandler(), i: %d, command: %s, tagDict: %s", i, command, str(tagDict))
 
             try:
                 log.trace(str(tagDict))

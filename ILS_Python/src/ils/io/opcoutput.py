@@ -9,7 +9,7 @@ Created on Jul 9, 2014
 import ils
 import ils.io
 import ils.io.opctag as opctag
-from ils.io.util import readTag, writeTag
+from ils.io.util import readTag, writeTag, writeNaN
 import system, string, time
 
 from ils.log import getLogger
@@ -95,8 +95,13 @@ class OPCOutput(opctag.OPCTag):
  
         ''' Write the value to the OPC tag '''
         log.tracef("%s - Writing value <%s> to %s/value", __name__, str(val), self.path)
-        status = writeTag(self.path + "/value", val)
-        log.tracef("%s - Write status: %s", __name__, status)
+        
+        if string.upper(str(val)) == 'NAN':
+            log.tracef("Writing a NaN to %s", __name__, self.path)
+            writeNaN(self.path + "/value")
+        else:
+            status = writeTag(self.path + "/value", val)
+            log.tracef("%s - Write status: %s", __name__, status)
                                
         status, msg = self.confirmWrite(val, confirmTagPath)
  

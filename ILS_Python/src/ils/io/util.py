@@ -198,7 +198,7 @@ def isExpressionTag(fullTagPath):
         return False
                 
     except:
-        log.errorf("Error attempting to determine if <%s> is a UDT.", fullTagPath)  
+        log.errorf("Error attempting to determine if <%s> is an expression tag.", fullTagPath)  
         
     return False
 
@@ -217,7 +217,7 @@ def isFolder(fullTagPath):
         return False
                 
     except:
-        log.errorf("Error attempting to determine if <%s> is a UDT.", fullTagPath)
+        log.errorf("Error attempting to determine if <%s> is a folder.", fullTagPath)
 
     return False
     
@@ -238,10 +238,71 @@ def isQueryTag(fullTagPath):
         return False
                 
     except:
-        log.errorf("Error attempting to determine if <%s> is a UDT.", fullTagPath)  
+        log.errorf("Error attempting to determine if <%s> is a Query tag.", fullTagPath)  
         
     return False
 
+def isMemoryTag(fullTagPath):
+    ''' Determine if the referenced tag is a query tag. '''
+    try:
+        config = system.tag.getConfiguration(fullTagPath, False)
+        tagType = config[0]['tagType']
+    
+        if str(tagType) in ['AtomicTag']:
+            valueSource = config[0]['valueSource']
+
+            if str(valueSource) == 'memory':
+                return True
+            else:
+                return False
+
+        return False
+    except:
+        log.errorf("Error attempting to determine if <%s> is a Memory tag.", fullTagPath)  
+        
+    return False
+    
+def isReferenceTag(fullTagPath):
+    ''' Determine if the referenced tag is a query tag. '''
+    try:
+        config = system.tag.getConfiguration(fullTagPath, False)
+        tagType = config[0]['tagType']
+    
+        if str(tagType) in ['AtomicTag']:
+            valueSource = config[0]['valueSource']
+
+            if str(valueSource) == 'reference':
+                return True
+            else:
+                return False
+
+        return False
+                
+    except:
+        log.errorf("Error attempting to determine if <%s> is a Reference tag.", fullTagPath)  
+        
+    return False
+
+def isOpcTag(fullTagPath):
+    ''' Determine if the referenced tag is a query tag. '''
+    try:
+        config = system.tag.getConfiguration(fullTagPath, False)
+        tagType = config[0]['tagType']
+    
+        if str(tagType) in ['AtomicTag']:
+            valueSource = config[0]['valueSource']
+
+            if str(valueSource) == 'opc':
+                return True
+            else:
+                return False
+
+        return False
+    
+    except:
+        log.errorf("Error attempting to determine if <%s> is an OPC.", fullTagPath)  
+        
+    return False
 
 def isUDT(fullTagPath):
     '''
@@ -548,10 +609,46 @@ def readTag(tagPath):
 
 def writeTag(tagPath, val):
     '''
-    This reads a single value to a single tag using an asynchronous write without confirmation or status return.
+    This writes a single value to a single tag using an asynchronous write without confirmation or status return.
     This just saves the caller the task of packing the arguments when migrating to Ignition 8. 
     '''
-    system.tag.writeAsync([tagPath], [val])
+    if str(val) == "nan":        
+        if isMemoryTag(tagPath):
+            log.tracef("In %s.writeTag(): Writing a NaN (converting NaN to None) to the memory tag: %s", __name__, tagPath)
+            system.tag.writeAsync([tagPath], [None])
+        elif isOpcTag(tagPath):
+            log.tracef("In %s.writeTag(): Writing a NaN to the OPC tag: %s", __name__, tagPath)
+            writeNaN(tagPath)
+        else:
+            log.errorf("Unable to write a NaN to tag <%s>, which is not an OPC or memory tag!", tagPath)
+    else:
+        log.tracef("In %s.writeTag(): writing <%s> to <%s>....", __name__, str(val), tagPath)
+        system.tag.writeAsync([tagPath], [val])
+        
+def isNaN(qv):
+    '''
+    I tried to use math.isnan() here but it didn't work very well.  
+    It seems brittle to check for this very specific quality string, but all I could get to work 
+    '''
+    log.tracef("In %s.isNaN(), checking %s...", __name__, str(qv))
+    if "Invalid value: Tag value is Infinity or NaN" in str(qv.quality):
+        return True
+    else:
+        return False
+        
+def writeNaN(tagPath):
+    '''
+    Write a NaN to an OPC tag
+    '''
+    log.infof("In %s.writeNaN(), writing a NaN to %s", __name__, tagPath)
+    
+    try:
+        vals = system.tag.readBlocking([tagPath + ".OpcServer", tagPath + ".OpcItemPath"])
+        server = vals[0].value
+        itemId = vals[1].value
+        system.opc.writeValue(server, itemId, float("NaN"))
+    except:
+        log.errorf("Error writing NaN to %s", tagPath)
     
 def writeTagSync(tagPath, val):
     '''
