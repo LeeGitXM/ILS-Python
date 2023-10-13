@@ -62,7 +62,7 @@ def callMethodWithParams(methodPath, keys, values):
 
 def chartIsRunning(chartPath, isolationMode=False):
     '''Check if the given chart is running. '''
-    log.infof("Checking if <%s> is currently running in Isolation Mode: %s...", chartPath, isolationMode)
+    log.infof("In %s.chartIsRunning() - Checking if <%s> is currently running in Isolation Mode: %s...", __name__, chartPath, isolationMode)
     ds = system.sfc.getRunningCharts(chartPath)
     log.tracef("Found %d running <%s> chart(s)", ds.rowCount, chartPath)
     if ds.rowCount == 0:
@@ -76,11 +76,22 @@ def chartIsRunning(chartPath, isolationMode=False):
         if string.upper(chartState) in ["RUNNING", "PAUSED"]:
             instanceId = ds.getValueAt(row, "instanceId")
             log.infof("...found a running chart with instance id: %s", instanceId)
-            chartVars = system.sfc.getVariables(instanceId)
-            log.infof("Chart variables: %s", str(chartVars))
+            
+            '''
+            This is a strange place for a try - except block but Escorez encountered an error on this system call.
+            There is no way that this should ever fail!!!  The whole purpose of this call is to determine if the isolation mode of 
+            the running chart matches the isolation mode of the client.  I will assume that the isolation mode of the chart is False.
+            '''
+            
+            try:
+                chartVars = system.sfc.getVariables(instanceId)
+                log.infof("Chart variables: %s", str(chartVars))
 
-            instanceIsolationMode = chartVars.get("isolationMode", None)
-            log.infof("Running chart isolation mode: %s", str(instanceIsolationMode))
+                instanceIsolationMode = chartVars.get("isolationMode", None)
+                log.infof("Running chart isolation mode: %s", str(instanceIsolationMode))
+            except:
+                log.infof("Error get chart variables for a running chart instance - assuming that the chart isolation mode is FALSE!")
+                instanceIsolationMode = False
             
             if instanceIsolationMode == isolationMode:
                 log.infof("The chart IS already running!")

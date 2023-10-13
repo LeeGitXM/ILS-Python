@@ -141,19 +141,8 @@ def clientCommon():
         Isolation Mode is set correctly, but that doesn't mean that the tag provider and database 
         tags are set correctly.  So set them without touching the isolation mode. 
         '''
-             
-        projectName = system.util.getProjectName()
-
-        payload = {"project": projectName, "isolationMode": False}
-        log.infof("Payload: %s", payload)
-        tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
-        log.infof("   Tag Provider: %s", tagProvider)
-        database = system.util.sendRequest(projectName, "getDatabase", payload)
-        log.infof("   Database: %s", database)
-
-        log.infof("   ...writing to client tags...")        
-        system.tag.writeBlocking(["[Client]Tag Provider", "[Client]Database"], [tagProvider, database])
-    
+        from ils.config.client import _isolationModeChangeHandler as setIsolationModeTags
+        setIsolationModeTags(False)  
     
     username = system.security.getUsername()
     rows = system.db.runScalarQuery("select count(*) from TkPost where post = '%s'" % (username)) 

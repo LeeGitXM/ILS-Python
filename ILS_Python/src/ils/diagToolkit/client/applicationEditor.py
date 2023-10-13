@@ -72,13 +72,30 @@ def deleteQuantOutputCallback(event):
     rootContainer.  This doesn't delete anything from the database, that will happen when they press SAVE. 
     '''
     log.infof("In %s.deleteQuantOutputCallback()", __name__)
+    db = getDatabase()
     container = event.source.parent
     quantOutputlist = container.getComponent("List")
     row = quantOutputlist.selectedIndex
     rootContainer = container.parent
+    applicationName = rootContainer.applicationName
     
+    ''' 
+    Fetch the id of the selected output - if we can't fetch an ID then it means that the output was just created and has not 
+    been saved to the DB yet, so it is safe to delete and don't check for references.
+    '''
     ds = rootContainer.quantOutputNames
     quantOutputName = ds.getValueAt(row, 0)
+    SQL = "SELECT QuantOutputId from DtQuantOutputDefinitionView where ApplicationName = '%s' and QuantOutputName = '%s' " % (applicationName, quantOutputName)
+    quantOutputId = system.db.runScalarQuery(SQL, database=db)
+    if quantOutputId == None:
+        log.infof("Deleting a new output that hasn't been added to the database yet")
+    else:
+        SQL = "select count(*) from DtRecommendationDefinition where QuantOutputId = %d" % (quantOutputId)
+        referenceCount = system.db.runScalarQuery(SQL, database=db)
+        if referenceCount > 0:
+            system.gui.messageBox("Warning: Unable to delete %s because there are %d Final Diagnosis that reference it." % (quantOutputName, referenceCount))
+            return
+    
     confirmed = system.gui.confirm("Are you sure you want to delete output <%s>?" % (quantOutputName))
     if confirmed:
         ds = system.dataset.deleteRow(ds, row)

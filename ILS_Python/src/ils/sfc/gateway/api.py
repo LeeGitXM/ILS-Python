@@ -471,6 +471,7 @@ def deleteAndSendClose(project, windowId, database):
     '''Delete the common window record and message the client to close the window'''
     system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
     payload = {WINDOW_ID: windowId, HANDLER: 'sfcCloseWindow', DATABASE: database}
+    log.infof("Sending %s to clients", str(payload))
     system.util.sendMessage(project, 'sfcMessage', payload, scope="C")
     
 def dictToString(aDict):

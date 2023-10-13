@@ -44,12 +44,16 @@ def getTimeFactor():
     timeFactor=readTag("[Client]Time Factor").value
     return timeFactor
 
-def isolationModeChangeHandler(newValue):
+def isolationModeChangeHandler(qv):
     '''
     This is called from the tag change handler on a client tag.
     '''
-    isolationMode = newValue.value
-    log.infof("In %s.isolationModeChangeHandler(), new isolation mode: %s", __name__, str(isolationMode))
+    log.infof("In %s.isolationModeChangeHandler(), new isolation mode: %s", __name__, str(qv))
+    isolationMode = qv.value
+    _isolationModeChangeHandler(isolationMode)
+    
+def _isolationModeChangeHandler(isolationMode):
+    log.infof("In %s._isolationModeChangeHandler(), new isolation mode: %s", __name__, str(isolationMode))
     projectName = system.util.getProjectName()
 
     payload = {"project": projectName, "isolationMode": isolationMode}

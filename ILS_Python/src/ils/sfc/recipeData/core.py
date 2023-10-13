@@ -1640,7 +1640,10 @@ def readTag(chartScope, tagPath):
     '''  Read a tag substituting provider according to isolation mode.  '''
     provider = getProviderName(chartScope)
     fullPath = substituteProvider(tagPath, provider)
-    qv = readTag(fullPath)
+    
+    qvs = system.tag.readBlocking([fullPath])
+    qv = qvs[0]
+    
     return qv.value
 
 def getProviderName(chartProperties):

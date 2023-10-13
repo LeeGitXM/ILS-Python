@@ -37,6 +37,7 @@ def setClientResponse(rootContainer, response):
     chartId = rootContainer.chartId
     stepId = rootContainer.stepId
     keyAndAttribute = rootContainer.keyAndAttribute
+    log.infof("The key and attribute is: %s, location: %s", keyAndAttribute, responseLocation)
     
     if responseLocation == CHART_SCOPE:
         log.tracef("  chart Id: %s", chartId)
@@ -54,21 +55,23 @@ def setClientResponse(rootContainer, response):
         
         '''
         An optimization is to assume that the attribute is ".value" if they did not enter an attribute.
-        At one point, I assumed that the response could ONLT be stuffed into a SIMPLE VALUE type of recipe data.  
+        At one point, I assumed that the response could ONLY be stuffed into a SIMPLE VALUE type of recipe data.  
         Segun came up with a pretty cool use case where they would select the mode of a control from a SELECT INPUT step.
-        So in stead of looking for ".value",  just look for a "."  Segun wants the response to go to the outputValue of an OUTPUT.
+        So instead of looking for ".value",  just look for a "."  Segun wants the response to go to the outputValue of an OUTPUT.
         The new strategy might get confused if we are specifying a folder; but I think that if they specify a folder then they MUST specify the attribute.
         '''
-        if keyAndAttribute.find(".value") < 0:
+        if keyAndAttribute.find(".") < 0:
             keyAndAttribute = keyAndAttribute + ".value"
-            
+        
+        log.infof("Revised key and attribute is: %s, location: %s", keyAndAttribute, responseLocation)
+        
         folder,key,attribute = splitKey(keyAndAttribute)
-        log.tracef("   folder: %s", folder)
-        log.tracef("   key: %s", key)
-        log.tracef("   attribute: %s", attribute)
+        log.infof("   folder: %s", folder)
+        log.infof("   key: %s", key)
+        log.infof("   attribute: %s", attribute)
         chartPath, stepName = s88GetStepInfoFromId(targetStepId, db)
-        log.tracef("  chartPath: %s", chartPath)
-        log.tracef("   stepName: %s", stepName)
+        log.infof("  chartPath: %s", chartPath)
+        log.infof("   stepName: %s", stepName)
         setRecipeData(stepName, targetStepId, folder, key, attribute, response, db)
 
 

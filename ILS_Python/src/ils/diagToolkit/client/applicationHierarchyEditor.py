@@ -257,8 +257,9 @@ def deleteCallback(event):
     elif nodeType == FAMILY_TYPE:
         ''' remove all references to the family, delete the family, update both trees '''
         applicationName = tokens[1]
-        familyName = tokens[2]
+        familyName = stripPriority(tokens[2])
         familyId = fetchFamilyId(applicationName, familyName, db)
+        log.infof("Deleting family named: <%s> with id: %s in application: %s", familyName, familyId, applicationName)
         SQL = "update DtDiagram set FamilyId = NULL where familyId = %d" % (familyId)
         rows = system.db.runUpdateQuery(SQL, database=db)
         log.infof("...cleared %d diagram references to family %s...", rows, familyName)

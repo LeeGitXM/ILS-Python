@@ -885,7 +885,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
         for record in pds:
             recommendationId=record["RecommendationId"]
             SQL = "delete from DtRecommendation where RecommendationId = %d" % (recommendationId)
-            rows=system.db.runUpdateQuery(SQL)
+            rows=system.db.runUpdateQuery(SQL, database)
             totalRows=totalRows+rows
         log.tracef("     ...deleted %d quantitative recommendations...", totalRows)
         
@@ -904,7 +904,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
         for record in pds:
             diagnosisEntryId=record["DiagnosisEntryId"]
             SQL = "delete from DtTextRecommendation where DiagnosisEntryId = %d" % (diagnosisEntryId)
-            rows=system.db.runUpdateQuery(SQL)
+            rows=system.db.runUpdateQuery(SQL, database)
             totalRows=totalRows+rows
         log.tracef("     ...deleted %d text recommendations...", totalRows)
 
@@ -959,7 +959,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
         rows=system.db.runUpdateQuery(SQL, database)
         log.error("      ...updated %d final diagnosis!" % (rows))
     
-    def resetMultipliers(applicationName):
+    def resetMultipliers(applicationName, database):
         log.tracef("Resetting the multipliers...")
         SQL = "UPDATE DtDiagnosisEntry "\
             " SET Multiplier = 1.0 "\
@@ -969,7 +969,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
             " and D.FamilyId = F.familyId "\
             " and F.ApplicationId = A.ApplicationId "\
             " and A.ApplicationName = '%s')" % (applicationName)
-        rows = system.db.runUpdateQuery(SQL)
+        rows = system.db.runUpdateQuery(SQL, database)
         log.tracef("...reset %d final diagnosis", rows)
         
     #--------------------------------------------------------------------
@@ -987,7 +987,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     oldList=fetchPreviousHighestPriorityDiagnosis(application, database)
     
     if recalcRequested:
-        resetMultipliers(application)
+        resetMultipliers(application, database)
          
     from ils.diagToolkit.common import fetchActiveDiagnosis
     pds = fetchActiveDiagnosis(application, database)
@@ -1071,7 +1071,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
             # Update the Diagnosis Entry status to be posted
             log.tracef("Setting diagnosis entry recommendation status to POSTED for a contant FD")
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %d" % (RECOMMENDATION_POSTED, diagnosisEntryId)
-            system.db.runUpdateQuery(SQL)
+            system.db.runUpdateQuery(SQL, database)
 
         else:
             from ils.diagToolkit.recommendation import makeRecommendation

@@ -24,7 +24,7 @@ def internalFrameOpened(rootContainer):
     SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database=db)
     record=pds[0]
-    rootContainer.title = record["title"]
+    rootContainer.windowTitle = record["title"]
     
     SQL = "select * from SfcManualDataEntry where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database=db)

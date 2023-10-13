@@ -27,10 +27,11 @@ def activate(scopeContext, stepProperties, state):
     # Second, This is called when this block is placed in a loop AFTER the first time through.  This behavior does not make any sense, 
     # I'm not sure if this is getting screwed up in our Java layer or is the engine a little wonky.
     if state == DEACTIVATED:
+        log.infof("***** DEACTIVATED *****")
         log.tracef("Handling deactivate request for a TimedDelay block named %s", stepName)
         stepScope['_endTime'] = None
         logStepDeactivated(chartScope, stepProperties)
-        cleanup(chartScope, stepScope, stepProperties)
+        cleanup(chartScope, stepScope, stepProperties, log)
         return True
        
     try:
@@ -146,19 +147,19 @@ def activate(scopeContext, stepProperties, state):
         workIsDone = True
     finally:
         if workIsDone:
-            cleanup(chartScope, stepScope, stepProperties)
+            cleanup(chartScope, stepScope, stepProperties, log)
             
             # This will get the block ready in the event it is in a loop
             stepScope['_endTime'] = None
         return workIsDone
         
-def cleanup(chartScope, stepScope, stepProperties):
-    import system.db
+def cleanup(chartScope, stepScope, stepProperties, log):
 
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)
         windowId = stepScope.get(WINDOW_ID, None)
+        log.tracef("************** In %s.cleanup() cleaning up window id %d", __name__, windowId)
         postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
         if postNotification:
             system.db.runUpdateQuery("delete from SfcTimeDelayNotification where windowId = '%s'" % (windowId), database)

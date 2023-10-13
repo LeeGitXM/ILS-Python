@@ -8,7 +8,7 @@ import system
 from ils.config.client import getDatabase, getIsolationMode
 from ils.sfc.client.util import getStartInIsolationMode, startChart
 from ils.sfc.common.util import chartIsRunning, getChartStatus
-from ils.sfc.common.constants import HANDLER, WINDOW
+from ils.sfc.common.constants import HANDLER, WINDOW, WINDOW_ID
 from ils.common.windowUtil import positionWindow
 from ils.sfc.client.windowUtil import getWindowPath
 from ils.sfc.common.notify import sfcNotify
@@ -33,19 +33,19 @@ def openControlPanel(controlPanelName, controlPanelId, startImmediately, positio
     db = getDatabase()
     isolationMode = getIsolationMode()
     chartPath = getControlPanelChartPath(controlPanelName, db)
-    print "...the chart path for this control panel is: ", chartPath
+    log.infof("...the chart path for this control panel is: %s", chartPath)
     if not chartIsRunning(chartPath, isolationMode):
-        print "...the chart is not running so reset the control panel..."
+        log.infof("...the chart is not running so reset the control panel...")
         resetControlPanel(controlPanelName)
     
     cpWindow = findOpenControlPanel(controlPanelName)
     if cpWindow == None:
-        print "...opening a new control panel..."
+        log.infof("...opening a new control panel...")
         cpWindow = system.nav.openWindowInstance("SFC/ControlPanel", {'controlPanelName': controlPanelName, 'controlPanelId': controlPanelId})
         
         positionWindow(cpWindow, position)
     else:
-        print "...bringing an open control panel to the front..."
+        log.infof("...bringing an open control panel to the front...")
         cpWindow.toFront()
         
     isolationMode = getStartInIsolationMode()
@@ -53,19 +53,19 @@ def openControlPanel(controlPanelName, controlPanelId, startImmediately, positio
     rootContainer.isolationMode = isolationMode
             
     if startImmediately:
-        print "Start immediately (if not already running)..."
+        log.infof("Start immediately (if not already running)...")
         '''
         There can only be one instance, regardless of isolation or production.
         '''
         if not chartIsRunning(chartPath):
-            print "In %s - starting %s" % (__name__, controlPanelName)
+            log.infof("In %s - starting %s", __name__, controlPanelName)
             project = system.util.getProjectName()
             originator = system.security.getUsername()
             startChart(chartPath, controlPanelName, project, originator, isolationMode)
         else:
             system.gui.warningBox('This chart is already running')
         
-        print "Refreshing the root container..."
+        log.infof("Refreshing the root container...")
         system.db.refresh(rootContainer, "windowData")
 
 def startChartFromControlPanel(rootContainer):
@@ -79,14 +79,21 @@ def startChartFromControlPanel(rootContainer):
     startChart(chartPath, controlPanelName, project, originator, isolationMode)
         
 def pauseChart(event):
+    log.infof("In %s.pauseChart()...", __name__)
     system.sfc.pauseChart(system.gui.getParentWindow(event).rootContainer.chartRunId)
 
 def resumeChart(event):
+    log.infof("In %s.resumeChart()...", __name__)
     system.sfc.resumeChart(system.gui.getParentWindow(event).rootContainer.chartRunId)
 
 def cancelChart(event):
+    log.infof("In %s.cancelChart()...", __name__)
     system.sfc.cancelChart(system.gui.getParentWindow(event).rootContainer.chartRunId)
-    closeAllPopups()
+    '''
+    Commented this out to prevent reset bleeding when there are two unit procedures with two control panels on the same client.
+    PAH 10/12/23 - TRAC#974
+    '''
+    #closeAllPopups()
        
 def updateChartStatus(event):
     '''Get the status of this panel's chart run and set the status field appropriately.
@@ -186,16 +193,22 @@ def reset(event):
     message = 'sfcMessage'
     post = "?"
     
-    SQL = "select windowPath from SfcWindow where controlPanelId = %s" % (controlPanelId)
+    SQL = "select windowPath, windowId from SfcWindow where controlPanelId = %s" % (controlPanelId)
     pds = system.db.runQuery(SQL, database=db) 
     for record in pds:
         windowPath = record["windowPath"]
-        print "Closing %s on all clients..." % (windowPath)
-        payload = {HANDLER: messageHandler, WINDOW: windowPath}
+        windowId = record["windowId"]
+        print "Closing %s - %d on all clients..." % (windowPath, windowId)
+        payload = {HANDLER: messageHandler, WINDOW: windowPath, WINDOW_ID: windowId}
         sfcNotify(project, message, payload, post, controlPanelName, controlPanelId, db)
     
     resetControlPanel(rootContainer.controlPanelName)
-    closeAllPopups()
+    
+    '''
+    Commented this out to prevent reset bleeding when there are two unit procedures with two control panels on the same client.
+    PAH 10/12/23 - TRAC#974
+    '''
+    #closeAllPopups()
 
 def closeAllPopups():
     '''close all popup windows, except for control panels and error Popup (we usually cancel the chart on the first error).

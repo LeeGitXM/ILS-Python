@@ -17,7 +17,7 @@ def internalFrameOpened(event):
     windowId = rootContainer.windowId
 
     title = system.db.runScalarQuery("select title from sfcWindow where windowId = '%s'" % (windowId), db)
-    rootContainer.title = title
+    rootContainer.windowTitle = title
     
     SQL = "select windowId, prompt, choicesStepId, choicesKey, responseLocation, targetStepId, keyAndAttribute, chartId, stepId from SfcSelectInput where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, db)

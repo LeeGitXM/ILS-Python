@@ -4,7 +4,7 @@ These message handlers all run in the client (the client receives the message fr
 '''
 
 import system
-from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, \
+from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, WINDOW_TITLE, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, \
     IS_SFC_WINDOW, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_WINDOW_PATH
 from ils.sfc.client.windowUtil import shouldShowWindow, fetchWindowInfo
 from ils.common.windowUtil import positionWindow, openWindowInstance
@@ -116,12 +116,13 @@ def sfcOpenWindow(payload):
     else:
         position = record[POSITION]
         scale = record[SCALE]
+        windowTitle = record["title"]
         
     log.tracef("Path: %s, Position: %s, Scale: %s", windowPath, position, str(scale)) 
     
     if isSfcWindow:    
         log.tracef("The window is an SFC window, passing the WindowId: <%s>...", str(windowId))
-        windowPayload = {WINDOW_ID: windowId}
+        windowPayload = {WINDOW_ID: windowId, WINDOW_TITLE: windowTitle}
         
         ''' I really hate this implementation, if there is something extra on the payload ovr the entries that messaging need, then pass them on to the window '''
         if windowPath == "SFC/SaveData":
@@ -201,19 +202,27 @@ def sfcCloseWindow(payload):
 
 
 def sfcCloseWindowByName(payload):
+    '''
+    This is called by the RESET button on the control panel.  The name is not really indicative of how it really works.
+    This was updated on 10/9/23 to handle the case where two unit procedurers are running and they both display the same window
+    and pressing reset on one control panel would close both windows.
+    '''
     log.infof("In %s.sfcCloseWindowByName() with %s", __name__, str(payload))
-    windowPath = payload[WINDOW]
-    log.tracef("Attempting to close: %s", windowPath)
+    windowPath = payload.get(WINDOW, None)
+    windowIdFromPayload = payload.get(WINDOW_ID, None)
+    log.tracef("Attempting to close: %s - %s", windowPath, str(windowIdFromPayload))
     windows = system.gui.findWindow(windowPath)
     log.tracef("...found %d windows matching the path...", len(windows))
     for window in windows:
-        log.tracef("...closing %s...", window)
-        system.nav.closeWindow(window)
-        
-    print "Checking the open windows:"
-    openWindows = system.gui.getOpenedWindows()
-    for window in openWindows:
-        print "   window: ", window.getPath()
+        rootContainer = window.getRootContainer()
+        windowIdFromWindow = rootContainer.getPropertyValue("windowId")
+        print "Win Id: ", windowIdFromWindow
+        if windowIdFromWindow != None and windowIdFromPayload == windowIdFromWindow:
+            log.tracef("...closing the window because the id matches...")
+            system.nav.closeWindow(window)
+        elif windowIdFromWindow == None or windowIdFromPayload == None:
+            log.tracef("...closing the window because the window or payload does not have an id...")
+            system.nav.closeWindow(window)
 
 
 def sfcShowQueue(payload):

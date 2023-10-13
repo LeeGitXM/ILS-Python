@@ -28,7 +28,10 @@ def activate(scopeContext, stepProperties, state):
         chartLogger.tracef("In %s.activate(), opening window: %s, at %s at scale: %s" % (__name__, windowPath, position, str(scale)))
         
         database = getDatabaseName(chartScope)
-        title = ""
+        title = getStepProperty(stepProperties, "windowTitle")
+        if title in [None, "none"]:
+            title = ""
+
         # Register the window with the control panel
         chartRunId = getTopChartRunId(chartScope)
         windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)

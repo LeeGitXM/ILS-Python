@@ -5,7 +5,8 @@ Created on May 3, 2015
 '''
 import system
 from ils.config.client import getDatabase
-from ils.sfc.common.constants import SFC_WINDOW_LIST, DATABASE
+from ils.sfc.common.constants import DATABASE, TABLE, PROJECT, CONTROL_PANEL_NAME, ORIGINATOR, SECURITY, PRIVATE, POST, POSITION, SCALE, WINDOW_ID
+from ils.common.windowUtil import positionWindow
 
 def getWindowId(window):
     '''get the id of a window. Return None if it doesn't have a window id'''
@@ -18,11 +19,9 @@ def getWindowPath(window):
     return window.path
 
 def getRootContainer(event):
-    from system.gui import getParentWindow
-    return getParentWindow(event).rootContainer
+    return system.gui.getParentWindow(event).rootContainer
 
 def controlPanelOpen(controlPanelName):
-    import system.gui
     controlPanels = system.gui.findWindow('SFC/ControlPanel')
     for controlPanel in controlPanels:
         if controlPanel.getRootContainer().controlPanelName == controlPanelName:
@@ -46,7 +45,6 @@ def consoleWindowOpen(post, db):
 
 def getOpenWindow(windowId):
     '''Get the open window with the given id, or None if there isnt one'''
-    import system.gui
     openWindows = system.gui.getOpenedWindows()
     for window in openWindows:
         openWindowId = getWindowId(window)
@@ -56,8 +54,6 @@ def getOpenWindow(windowId):
 
 def shouldShowWindow(payload):
     '''return True if a window from the chart with given control panel and originator should show in this client'''    
-    from ils.sfc.common.constants import WINDOW, CONTROL_PANEL_NAME, ORIGINATOR, SECURITY, PRIVATE, POST
-
     originator = payload.get(ORIGINATOR, "")
     controlPanelName = payload.get(CONTROL_PANEL_NAME, "")
     security = payload.get(SECURITY, PRIVATE)
@@ -113,8 +109,7 @@ def fetchWindowInfo(windowId):
 
 def reopenWindow(windowId):
     '''This is called from the button on the control panel.'''
-    from ils.sfc.common.constants import POSITION, SCALE, WINDOW_ID
-    from ils.common.windowUtil import positionWindow
+
     
     print "In %s.reopenWindow(), the windowId is: %s" % (__name__, windowId)
 
@@ -149,6 +144,8 @@ def reopenWindow(windowId):
     I used to have a list of SFC windows, all of these were required to have a property "windowId" which was the key to the table sfcWindow.
     I also allowed vanilla windows to be displayed but this caused problems when trying to reopen the window from the control panel window button.
     It makes more sense that every window that is going to be shown from an SFC requires the property "windowId". 
+    If it doesn't, it will still open, but a warning will be generated!
+    A better design would be to add a column to the SfcWindow table: isSfcWindow, which would signal if it has a windowId property.
     '''
 
     payload = {"windowId": windowId}
@@ -160,13 +157,10 @@ def reopenWindow(windowId):
     window.title = title
 
 def sendCloseWindow(window, table):
-    from ils.sfc.common.constants import DATABASE, WINDOW_ID, TABLE, PROJECT
     from ils.sfc.client.util import sendMessageToGateway
-    import system.util
     windowId = window.getRootContainer().windowId
     database = getDatabase()
     project = system.util.getProjectName()
     payload = {WINDOW_ID:windowId, DATABASE: database, TABLE: table, PROJECT: project}
     sendMessageToGateway(project, 'sfcCloseWindow', payload)
     system.nav.closeWindow(window)
-

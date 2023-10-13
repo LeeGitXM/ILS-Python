@@ -98,8 +98,10 @@ def activate(scopeContext, stepProperties, state):
                 rowNum = 0
                 for row in config.rows:
                     prompt = row.prompt
+                    key = row.key
                     
-                    if prompt in [None, "None"]:
+                    if prompt in [None, "None"] or key in [None, "None"]:
+                        logger.tracef("Skipping initialization or a blank row...")
                         prompt = ""
                         units = ""
                         defaultValue = ""
@@ -108,7 +110,7 @@ def activate(scopeContext, stepProperties, state):
                         destination = ""
                         key = ""
                     else:
-                        logger.tracef("Getting the default value for row: %d <%s>", rowNum, str(row.defaultValue))
+                        logger.tracef("Getting the default value for row: %d <Key: %s> <Destination: %s> <Default: %s>", rowNum, str(row.key), str(row.destination), str(row.defaultValue))
     
                         if row.units == None:
                             units = ""
@@ -116,7 +118,7 @@ def activate(scopeContext, stepProperties, state):
                             units = row.units
     
                         destination = row.destination
-                        key = row.key
+                        
                         
                         '''
                         If the engineer wants the default value to be blank, then they either need to type None into the default value field
@@ -172,7 +174,7 @@ def activate(scopeContext, stepProperties, state):
                             database record that will be used by the client.
                             '''
                             destination, key = getRecipeByReference(chartScope, key)
-                            print "The dereferenced scope and key are %s - %s" % (destination, key)
+                            logger.tracef("The dereferenced scope and key are %s - %s", destination, key)
                             targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, destination, key, database)
                         else:
                             targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, row.destination, key, database)

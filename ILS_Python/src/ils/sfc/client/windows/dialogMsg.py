@@ -21,9 +21,9 @@ def internalFrameOpened(event):
     rootContainer.theMessage = message
     rootContainer.ackRequired = ackRequired
     
-    SQL = "select title from SfcWindow where windowId = '%s'" % (windowId)
-    title = system.db.runScalarQuery(SQL, database=db)
-    rootContainer.title = title
+    #SQL = "select title from SfcWindow where windowId = '%s'" % (windowId)
+    #title = system.db.runScalarQuery(SQL, database=db)
+    #rootContainer.title = title
 
 
 def okActionPerformed(event):

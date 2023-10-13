@@ -108,7 +108,7 @@ class PKSRampController(pkscontroller.PKSController):
 
         ''' I want to write these simultaneously, rather than write one, wait as it is confirmed, and then write the other and wait to confirm it '''
         if confirmed:
-            log.tracef("...writing %f to the targetValue and %f to the ramptime...", val, rampTime)
+            log.tracef("...writing %f to the targetValue and %s to the ramptime...", val, str(rampTime))
             writeTag(self.path + "/sp/rampTime", rampTime)
             writeTag(self.path + "/sp/targetValue", val)
             confirmed, errorMessage = confirmWrite(self.path + "/sp/rampTime", rampTime)
