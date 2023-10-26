@@ -40,12 +40,12 @@ def internalFrameOpened(rootContainer):
 
 # update the list of display tables that are appropriate for the selected console
 def internalFrameActivated(rootContainer):
-    log.tracef("In %s.internalFrameActivated()", __name__)
+    log.infof("In %s.internalFrameActivated()", __name__)
     populateRepeater(rootContainer)
     animatePageTabs(rootContainer)
 
 def newPostSelected(rootContainer):
-    log.tracef("In %s.newPostSelected()", __name__)
+    log.infof("In %s.newPostSelected()", __name__)
     setNumberOfPages(rootContainer)
     populateRepeater(rootContainer)
 
@@ -75,6 +75,7 @@ def setNumberOfPages(rootContainer):
 
 # Populate the template repeater with the table names for the selected post and page
 def animatePageTabs(rootContainer):
+    log.infof("In %s.animatePageTabs()", __name__)
     numberOfPages = rootContainer.numberOfPages
     tabStrip=rootContainer.getComponent("Tab Strip")
     tabDataDS=tabStrip.tabData
@@ -124,7 +125,7 @@ def animatePageTabs(rootContainer):
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
-    log.tracef("In %s.populateRepeater()", __name__)
+    log.infof("In %s.populateRepeater()", __name__)
     selectedPost = rootContainer.getPropertyValue("selectedPost")
     selectedPage = rootContainer.getPropertyValue("selectedPage")
     SQL = "Select DisplayTableTitle "\
@@ -155,7 +156,7 @@ def populateRepeater(rootContainer):
     rootContainer.displayTableTitles = ds
 
 def checkForNewData(displayTableTitle):
-    log.tracef("In labData.tableChooser.checkForNewData()...")
+    log.infof("In %s.tableChooser.checkForNewData()...", __name__)
     log.tracef(" ---- Checking Table: %s", displayTableTitle)
     newData = False
 
