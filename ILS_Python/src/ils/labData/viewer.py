@@ -92,18 +92,26 @@ def newLabDataMessageHandler(payload):
 def configureLabDatumTable(container, db=""):
     username = system.security.getUsername()
     log.tracef("In %s.configureLabDatumTable(), checking for lab data viewed by %s", __name__, username)
+    dateFormat = readTag("Configuration/LabData/dateFormat").value
     valueName=container.LabValueName
     valueDescription=container.Description
     displayDecimals=container.DisplayDecimals
     log.tracef("Configuring the Lab Datum Viewer table for %s", valueName)
     
     from ils.labData.common import fetchValueId
-    valueId = fetchValueId(valueName, db)
-        
-    SQL = "select top 13 RawValue as '%s', SampleTime, ReportTime, HistoryId "\
-        " from LtHistory "\
-        " where ValueId = %i "\
-        " order by SampleTime desc" % (valueName, valueId)
+    valueId, stringValue = fetchValueId(valueName, db)
+    
+    if stringValue:
+        SQL = "select top 13 RawStringValue as '%s', SampleTime, ReportTime, HistoryId "\
+            " from LtHistory "\
+            " where ValueId = %i "\
+            " order by SampleTime desc" % (valueName, valueId)
+    else:
+        SQL = "select top 13 RawValue as '%s', SampleTime, ReportTime, HistoryId "\
+            " from LtHistory "\
+            " where ValueId = %i "\
+            " order by SampleTime desc" % (valueName, valueId)
+    
     log.tracef(SQL)
     pds = system.db.runQuery(SQL, database=db)
     
@@ -123,23 +131,24 @@ def configureLabDatumTable(container, db=""):
             container.NewestHistoryId=historyId
         
         val = record[valueName]
-        
-        if displayDecimals == 0:
-            val = "%.0f" % (val)
-        elif displayDecimals == 1:
-            val = "%.1f" % (val)
-        elif displayDecimals == 2:
-            val = "%.2f" % (val)
-        elif displayDecimals == 3:
-            val = "%.3f" % (val)
-        elif displayDecimals == 4:
-            val = "%.4f" % (val)
-        elif displayDecimals == 5:
-            val = "%.5f" % (val)
-        else:
-            val = "%f" % (val)
-            
-        myDateString=system.db.dateFormat(record["SampleTime"], "HH:mm MM/d")
+
+        if not(stringValue):        
+            if displayDecimals == 0:
+                val = "%.0f" % (val)
+            elif displayDecimals == 1:
+                val = "%.1f" % (val)
+            elif displayDecimals == 2:
+                val = "%.2f" % (val)
+            elif displayDecimals == 3:
+                val = "%.3f" % (val)
+            elif displayDecimals == 4:
+                val = "%.4f" % (val)
+            elif displayDecimals == 5:
+                val = "%.5f" % (val)
+            else:
+                val = "%f" % (val)
+
+        myDateString=system.db.dateFormat(record["SampleTime"], dateFormat)
         val = "%s at %s" % (val, myDateString)
         
         if lastViewedTime == None or reportTime > lastViewedTime:

@@ -11,9 +11,10 @@ from ils.log import getLogger
 log = getLogger(__name__)
 LAB_DATA_ROOT = "LabData"
 
-def createLabValue(unitName, valueName):
+def createLabValue(unitName, valueName, stringValue):
     tagProvider = getTagProvider()
     udtType='Lab Data/Lab Value'
+    log.tracef("Creating a lab data UDT (%s) named: %s (string: %s)", udtType, valueName, str(stringValue))
     path = LAB_DATA_ROOT + "/" + unitName
     parentPath = "[%s]%s" % (tagProvider, path)  
     tagPath = parentPath + "/" + valueName
@@ -29,6 +30,23 @@ def createLabValue(unitName, valueName):
                "typeId": udtType
             }
         system.tag.configure(parentPath, tags=[tag])
+        
+        if stringValue:
+            log.tracef("...configuring the value tags as Strings...")
+            parentPath = tagPath
+            for tagName in ["value", "rawValue"]:
+                tags = system.tag.getConfiguration(parentPath + "/" + tagName)
+                tag = tags[0]
+                print "Original tag configuration: ", tag
+                tag['dataType'] = "String"
+                print "Modified tag configuration: ", tag
+             
+                # Overwrite the existing configuration.
+                collisionPolicy = "o"
+              
+                # Updated the embedded tag.
+                system.tag.configure(parentPath, tag, collisionPolicy)
+
 
 def createLabLimit(unitName, valueName, limitType):
     tagProvider = getTagProvider()
@@ -58,7 +76,7 @@ def createLabLimit(unitName, valueName, limitType):
             }
         system.tag.configure(parentPath, tags=[tag])
 
-def createDcsTag(unitName, valueName, interfaceName, itemId):
+def createDcsTag(unitName, valueName, interfaceName, itemId, stringTag):
     tagProvider = getTagProvider()
     path = "LabData/%s/DCS-Lab-Values" % (unitName)
     parentPath = "[%s]%s" % (tagProvider, path)  
@@ -70,12 +88,17 @@ def createDcsTag(unitName, valueName, interfaceName, itemId):
         log.tracef("Creating an OPC tag for a DCS lab value named: %s, Path: %s", valueName, tagPath)
         #system.tag.addTag(parentPath=parentPath, name=valueName, tagType="OPC", dataType="Float8", 
         #                  attributes={"OPCServer": interfaceName, "OPCItemPath": itemId})
+        if stringTag:
+            dataType = "String"
+        else:
+            dataType = "Float8"
+            
         tag = {
                "name": valueName,
                "opcItemPath": itemId,
                "opcServer": interfaceName,
                "valueSource": "opc",
-               "dataType": "Float8",
+               "dataType": dataType,
                "tagType": "AtomicTag"
             }
         system.tag.configure(parentPath, tags=[tag])

@@ -14,14 +14,14 @@ log = getLogger(__name__)
 
 # This is called from the "Manual Entry" button on the "Lab Data Table Chooser" screen
 def launchChooser(rootContainer):
-    print "Launching the Manual Lab Data Entry Chooser Screen"
+    log.infof("In %s.launchChooser()...", __name__)
     post = rootContainer.selectedPost
     window=system.nav.openWindow("Lab Data/Manual Entry Value Chooser",{"post": post})
     system.nav.centerWindow(window)
 
   
 def chooserInitialization(rootContainer):
-    print "In ils.labData.manualEntry.chooserInitialization()..."
+    log.infof("In %s.chooserInitialization()...", __name__)
     post = rootContainer.post
     db = getDatabase()
     
@@ -37,7 +37,7 @@ def chooserInitialization(rootContainer):
     isAE = isAE()
     
     ''' We always present the local lab values. '''
-    print "Selecting the local lab values..."
+    log.tracef("Selecting the local lab values...")
     SQL = "select V.ValueName, V.ValueId "\
         " from LtLocalValue LV, LtValue V, TkUnit U, TkPost P "\
         " where LV.ValueId = V.ValueId "\
@@ -56,7 +56,7 @@ def chooserInitialization(rootContainer):
     '''
     if not(communicationHealthy) or manualEntryPermitted or isAE:
         
-        print "...adding lab data from PHD..."
+        log.tracef("...adding lab data from PHD that allow manual entry...")
         SQL = "select ValueName, ValueId "\
             " from LtPHDValueView "\
             " where Post = '%s' and AllowManualEntry = 1 "\
@@ -64,7 +64,7 @@ def chooserInitialization(rootContainer):
         pds = system.db.runQuery(SQL, database=db)
         ds = appendDatasets(ds, pds)
         
-        print "...adding lab data from the DCS..."
+        log.tracef("...adding lab data from the DCS that allow manual entry...")
         SQL = "select ValueName, ValueId "\
             " from LtDCSValueView "\
             " where Post = '%s' and AllowManualEntry = 1 "\
@@ -79,12 +79,11 @@ def chooserInitialization(rootContainer):
 
 # This is call from the "Enter Data" button on the "Manual Entry Value Chooser" screen
 def launchEntryForm(rootContainer):
-    print "Launching the Manual Lab Data Entry Form"
+    log.infof("In %s.launchEntryForm()...", __name__)
     post = rootContainer.post
     chooseList = rootContainer.getComponent("List")
     ds=chooseList.data
     selections = chooseList.getSelectedIndices()
-    print "The selections are: ", selections
     
     if len(selections) == 1:
         idx=chooseList.selectedIndex
@@ -94,12 +93,12 @@ def launchEntryForm(rootContainer):
         valueName=ds.getValueAt(idx,'ValueName')
         valueId=ds.getValueAt(idx,'ValueId')
         
-        print "Editing %s - %s" % (valueName, str(valueId))
+        log.tracef("Editing selection #%d: %s - %s", idx, valueName, str(valueId))
         
         window=system.nav.openWindow("Lab Data/Manual Entry",{"valueName": valueName, "valueId":valueId})
         system.nav.centerWindow(window)
     elif len(selections) > 1:
-        print "Launch the entry table!"
+        log.tracef("Launch the entry table!")
         valueNames = []
         valueIds = []
         for selection in selections:
@@ -114,91 +113,118 @@ def launchEntryForm(rootContainer):
 
     
 def entryFormInitialization(rootContainer):
-    print "In ils.labData.manualEntry.entryFormInitialization()..."
+    log.infof("In %s.entryFormInitialization()...", __name__)
     
     db = getDatabase()
+    dateFormat = readTag("Configuration/LabData/dateFormatLong").value
+    rootContainer.formatString = dateFormat
     valueId = rootContainer.valueId
     valueName = rootContainer.valueName
     
     # Fetch the unit for this value
-    SQL = "select UnitName from TkUnit U, LtValue V "\
+    SQL = "select U.UnitName, V.StringValue from TkUnit U, LtValue V "\
         " where V.UnitId = U.UnitId and V.ValueId = %s" % (str(valueId))
     pds = system.db.runQuery(SQL, database=db)
     if len(pds) != 1:
         system.gui.errorBox("Error fetching the unit for this lab data!")
         return
     record=pds[0]
+    
     unitName = record["UnitName"]
     rootContainer.unitName = unitName
-    print "   using unit %s" % (str(unitName))
     
-    # Fetch the limits for this value
-    SQL = "select * from LtLimit where ValueId = %s" % (str(valueId))
-    print SQL
-    pds = system.db.runQuery(SQL, database=db)
-
-    if len(pds) == 1:
-        record=pds[0]
-        
-        # Validity Limits
-        if record["UpperValidityLimit"] == None:
-            rootContainer.upperValidityLimitEnabled=False
-        else:
-            rootContainer.upperValidityLimitEnabled=True
-            rootContainer.upperValidityLimit = record["UpperValidityLimit"]
-
-        if record["LowerValidityLimit"] == None:
-            rootContainer.lowerValidityLimitEnabled=False
-        else:
-            rootContainer.lowerValidityLimitEnabled=True
-            rootContainer.lowerValidityLimit = record["LowerValidityLimit"]
-
-        # SQC Limits
-        if record["UpperSQCLimit"] == None:
-            rootContainer.upperSQCLimitEnabled=False
-        else:
-            rootContainer.upperSQCLimitEnabled=True
-            rootContainer.upperSQCLimit = record["UpperSQCLimit"]
-
-        if record["LowerSQCLimit"] == None:
-            rootContainer.lowerSQCLimitEnabled=False
-        else:
-            rootContainer.lowerSQCLimitEnabled=True
-            rootContainer.lowerSQCLimit = record["LowerSQCLimit"]
-        
-        # Release Limits
-        if record["UpperReleaseLimit"] == None:
-            rootContainer.upperReleaseLimitEnabled=False
-        else:
-            rootContainer.upperReleaseLimitEnabled=True
-            rootContainer.upperReleaseLimit = record["UpperReleaseLimit"]
-
-        if record["LowerReleaseLimit"] == None:
-            rootContainer.lowerReleaseLimitEnabled=False
-        else:
-            rootContainer.lowerReleaseLimitEnabled=True
-            rootContainer.lowerReleaseLimit = record["LowerReleaseLimit"]
-        
-    else:
-        print "Error fetching limits, fetched %d records" % (len(pds))
+    stringValue = record["StringValue"]
+    rootContainer.stringValue = stringValue
+    
+    if stringValue:
         rootContainer.upperValidityLimitEnabled=False
         rootContainer.lowerValidityLimitEnabled=False
         rootContainer.upperSQCLimitEnabled=False
         rootContainer.lowerSQCLimitEnabled=False
         rootContainer.upperReleaseLimitEnabled=False
         rootContainer.lowerReleaseLimitEnabled=False
+    else:
+        # Fetch the limits for this value
+        SQL = "select * from LtLimit where ValueId = %s" % (str(valueId))
+        pds = system.db.runQuery(SQL, database=db)
+    
+        if len(pds) == 1:
+            record=pds[0]
+            
+            # Validity Limits
+            if record["UpperValidityLimit"] == None:
+                rootContainer.upperValidityLimitEnabled=False
+            else:
+                rootContainer.upperValidityLimitEnabled=True
+                rootContainer.upperValidityLimit = record["UpperValidityLimit"]
+    
+            if record["LowerValidityLimit"] == None:
+                rootContainer.lowerValidityLimitEnabled=False
+            else:
+                rootContainer.lowerValidityLimitEnabled=True
+                rootContainer.lowerValidityLimit = record["LowerValidityLimit"]
+    
+            # SQC Limits
+            if record["UpperSQCLimit"] == None:
+                rootContainer.upperSQCLimitEnabled=False
+            else:
+                rootContainer.upperSQCLimitEnabled=True
+                rootContainer.upperSQCLimit = record["UpperSQCLimit"]
+    
+            if record["LowerSQCLimit"] == None:
+                rootContainer.lowerSQCLimitEnabled=False
+            else:
+                rootContainer.lowerSQCLimitEnabled=True
+                rootContainer.lowerSQCLimit = record["LowerSQCLimit"]
+            
+            # Release Limits
+            if record["UpperReleaseLimit"] == None:
+                rootContainer.upperReleaseLimitEnabled=False
+            else:
+                rootContainer.upperReleaseLimitEnabled=True
+                rootContainer.upperReleaseLimit = record["UpperReleaseLimit"]
+    
+            if record["LowerReleaseLimit"] == None:
+                rootContainer.lowerReleaseLimitEnabled=False
+            else:
+                rootContainer.lowerReleaseLimitEnabled=True
+                rootContainer.lowerReleaseLimit = record["LowerReleaseLimit"]
+            
+        else:
+            print "Error fetching limits, fetched %d records" % (len(pds))
+            rootContainer.upperValidityLimitEnabled=False
+            rootContainer.lowerValidityLimitEnabled=False
+            rootContainer.upperSQCLimitEnabled=False
+            rootContainer.lowerSQCLimitEnabled=False
+            rootContainer.upperReleaseLimitEnabled=False
+            rootContainer.lowerReleaseLimitEnabled=False
 
-    refreshRecentValues(rootContainer, valueId, db)
+    refreshRecentValues(rootContainer, valueId, stringValue, db)
 
 
 '''
 Now select the recent values for this lab datum
 '''
-def refreshRecentValues(rootContainer, valueId, db):    
-    SQL = "select top 10  SampleTime, RawValue from LtValueView where ValueId = %d order by SampleTime DESC" % (valueId) 
+def refreshRecentValues(rootContainer, valueId, stringValue, db):
+    dateFormat = readTag("Configuration/LabData/dateFormatLong").value
+    
+    if stringValue:
+        SQL = "select top 10 SampleTime, RawStringValue as 'RawValue' from LtHistory "\
+            " where ValueId = %i order by SampleTime desc" % (valueId)
+    else:
+        SQL = "select top 13 SampleTime, RawValue from LtHistory "\
+            " where ValueId = %i order by SampleTime desc" % (valueId)         
+    
     pds = system.db.runQuery(SQL, database=db)
+    data = []
+    for record in pds:
+        sampleTime = system.date.format(record["SampleTime"], dateFormat)
+        val = record["RawValue"]
+        data.append([sampleTime, val])
+         
+    ds = system.dataset.toDataSet(["Sample Time", "Value"], data)
     table = rootContainer.getComponent("Recent Value Container").getComponent("Value Table")
-    table.data = pds
+    table.data = ds
     
 
 # This is called when the operator presses the 'Enter' button on the Manual Entry screen
@@ -208,44 +234,57 @@ def entryFormEnterData(rootContainer, db=""):
     from ils.config.client import getTagProvider
     provider = getTagProvider()
     
-    sampleTime = rootContainer.getComponent("Sample Time").date
-    sampleValue = rootContainer.getComponent("Lab Value Field").floatValue
-    
+    stringValue = rootContainer.stringValue
     valueId = rootContainer.valueId
     valueName = rootContainer.valueName
     unitName = rootContainer.unitName
+    sampleTime = rootContainer.getComponent("Sample Time").date
     
-    upperValidityLimitEnabled = rootContainer.upperValidityLimitEnabled
-    upperValidityLimit = rootContainer.upperValidityLimit
-    lowerValidityLimitEnabled = rootContainer.lowerValidityLimitEnabled
-    lowerValidityLimit = rootContainer.lowerValidityLimit
-
-    print "The validity limits are from %s to %s (enabled = %s, %s)" % (str(lowerValidityLimit), str(upperValidityLimit), str(upperValidityLimitEnabled), str(lowerValidityLimitEnabled))
+    if stringValue:
+        log.tracef("...handling a string value...")
+        sampleValue = rootContainer.getComponent("String Lab Value Field").text
+        
+        # Check for an exact duplicate with the same value and time
+        SQL = "select count(*) from LtHistory where ValueId = ? and SampleTime = ? and rawStringValue = ?" 
+        pds = system.db.runPrepQuery(SQL, [valueId, sampleTime, sampleValue], database=db)
+        count = pds[0][0]
+        if count > 0:
+            system.gui.warningBox("This result has already been entered!")
+            return
+        
+    else:
+        sampleValue = rootContainer.getComponent("Lab Value Field").floatValue
     
-    if lowerValidityLimitEnabled and lowerValidityLimit != None and lowerValidityLimit != "":
-        if sampleValue < lowerValidityLimit:
-            confirm = system.gui.confirm("The value you entered, %.4f, is less than the lower validity limit, %.4f, are you sure?" % (sampleValue, lowerValidityLimit))
-            if not(confirm):
-                return
+        upperValidityLimitEnabled = rootContainer.upperValidityLimitEnabled
+        upperValidityLimit = rootContainer.upperValidityLimit
+        lowerValidityLimitEnabled = rootContainer.lowerValidityLimitEnabled
+        lowerValidityLimit = rootContainer.lowerValidityLimit
     
-    if upperValidityLimitEnabled and upperValidityLimit != None and upperValidityLimit != "":
-        if sampleValue > upperValidityLimit:
-            confirm = system.gui.confirm("The value you entered, %s, is greater than the upper validity limit, %s, are you sure?" % (str(sampleValue), str(upperValidityLimit)))
-            if not(confirm):
-                return
+        log.tracef("The validity limits are from %s to %s (enabled = %s, %s)", str(lowerValidityLimit), str(upperValidityLimit), str(upperValidityLimitEnabled), str(lowerValidityLimitEnabled))
+        
+        if lowerValidityLimitEnabled and lowerValidityLimit != None and lowerValidityLimit != "":
+            if sampleValue < lowerValidityLimit:
+                confirm = system.gui.confirm("The value you entered, %.4f, is less than the lower validity limit, %.4f, are you sure?" % (sampleValue, lowerValidityLimit))
+                if not(confirm):
+                    return
+        
+        if upperValidityLimitEnabled and upperValidityLimit != None and upperValidityLimit != "":
+            if sampleValue > upperValidityLimit:
+                confirm = system.gui.confirm("The value you entered, %s, is greater than the upper validity limit, %s, are you sure?" % (str(sampleValue), str(upperValidityLimit)))
+                if not(confirm):
+                    return
 
-    # Check for an exact duplicate with the same value and time
-    SQL = "select count(*) from LtHistory where ValueId = ? and SampleTime = ? and rawValue = ?" 
-    print SQL
-    pds = system.db.runPrepQuery(SQL, [valueId, sampleTime, sampleValue], database=db)
-    count = pds[0][0]
-    if count > 0:
-        system.gui.warningBox("This result has already been entered!")
-        return
+        # Check for an exact duplicate with the same value and time
+        SQL = "select count(*) from LtHistory where ValueId = ? and SampleTime = ? and rawValue = ?" 
+        pds = system.db.runPrepQuery(SQL, [valueId, sampleTime, sampleValue], database=db)
+        count = pds[0][0]
+        if count > 0:
+            system.gui.warningBox("This result has already been entered!")
+            return
 
-    # Store the value locally in the X O M database
+    # Store the value locally in the database
     from ils.labData.scanner import storeValue 
-    storeValue(valueId, valueName, sampleValue, sampleTime, unitName, log, provider, db)
+    storeValue(valueId, valueName, sampleValue, sampleTime, unitName, stringValue, log, provider, db)
     
     # Store the value in the Lab Data UDT memory tags, which are local to Ignition
     from ils.labData.scanner import updateTags
@@ -254,7 +293,7 @@ def entryFormEnterData(rootContainer, db=""):
     system.tag.writeBlocking(tags, tagValues)
     
     # Refresh the table of recent values to show what we just entered.
-    refreshRecentValues(rootContainer, valueId, db)
+    refreshRecentValues(rootContainer, valueId, stringValue, db)
     
     # If the lab datum is "local" then write the value to PHD, the destination is ALWAYS the historian so use an HDA write. 
     SQL = "select LV.ItemId, PHD.InterfaceName "\
@@ -274,13 +313,13 @@ def entryFormEnterData(rootContainer, db=""):
         writeEnabled = labDataWriteEnabled and globalWriteEnabled
         
         if writeEnabled and itemId not in ["", None] and serverName not in ["", None]:
-            print "Writing local value %s for %s to %s..." % (str(sampleValue), valueName, itemId)
+            log.tracef("Writing local value %s for %s to %s...", str(sampleValue), valueName, itemId)
             returnQuality = system.opchda.insertReplace(serverName, itemId, sampleValue, sampleTime, 192)
-            print "...the returnQuality is: %s" % (str(returnQuality))
+            log.tracef("...the returnQuality is: %s", str(returnQuality))
         else:
-            print "*** Skipping *** Write of local value %s for %s to %s" % (str(sampleValue), valueName, itemId)
+            log.tracef("*** Skipping *** Write of local value %s for %s to %s", str(sampleValue), valueName, itemId)
     else:
-        print "Skipping write of manual lab data because it is not LOCAL (%s %s)" % (str(sampleValue), valueName)
+        log.tracef("Skipping write of manual lab data because it is not LOCAL (%s %s)", str(sampleValue), valueName)
     
     # There is a cache of last values but we can't update it from here because the cache is in the gateway...
     system.gui.messageBox("Lab value of %s has been stored for %s!" % (str(sampleValue), valueName))

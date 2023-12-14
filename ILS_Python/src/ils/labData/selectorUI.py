@@ -5,7 +5,7 @@ Created on Jul 14, 2015
 '''
 
 import system
-from ils.labData.synchronize import createLabSelector, deleteLabSelector, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue
+from ils.labData.synchronize import createLabSelector, deleteLabSelector, createLabLimit, deleteLabLimit, deleteDcsLabValue
 
 # Open transaction when window is opened
 def internalFrameOpened(rootContainer):

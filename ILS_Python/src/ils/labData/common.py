@@ -16,10 +16,13 @@ def fetchInterfaceId(interfaceName, database=""):
 
 # Lookup the id of a value given its name
 def fetchValueId(valueName, database=""):
-    SQL = "select ValueId from LtValue where ValueName = '%s'" % (valueName)
+    SQL = "select ValueId, StringValue from LtValue where ValueName = '%s'" % (valueName)
     log.trace(SQL)
-    valueId = system.db.runScalarQuery(SQL, database)
-    return valueId
+    pds = system.db.runQuery(SQL, database)
+    record = pds[0]
+    valueId = record["ValueId"]
+    stringValue = record["StringValue"]
+    return valueId, stringValue
 
 def postMessage(txt, status="Info", database=""):
     from ils.queue.message import insert

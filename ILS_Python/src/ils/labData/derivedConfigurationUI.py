@@ -6,7 +6,7 @@ Created on Jul 1, 2015
 import system, string
 from ils.config.client import getTagProvider, getDatabase
 from ils.common.constants import CR
-from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue, updateLabValueUdt
+from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, deleteDcsLabValue, updateLabValueUdt
 from ils.labData.configurationUI import updateLimit
 from ils.log import getLogger
 log = getLogger(__name__)

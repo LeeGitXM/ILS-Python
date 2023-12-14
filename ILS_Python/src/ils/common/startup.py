@@ -41,7 +41,7 @@ def gateway():
     
     pds = system.db.runQuery("select * from TkSite")
     if len(pds) <> 1:
-        print "Found %d records in TkSite, exactly one is required!" % (len(pds))
+        log.errorf("Found %d records in TkSite, exactly one is required - aborting startup!", len(pds))
         return
     
     record = pds[0]
@@ -89,18 +89,18 @@ def client():
     sfcClientStartup()
     
     project = system.util.getProjectName()
-    print "The project is: %s (ils.common.startup.client)" % (project)
+    log.infof("The project is: %s (ils.common.startup.client)", project)
     
     pds = system.db.runQuery("select * from TkSite")
     if len(pds) <> 1:
-        print "Found %d records in TkSite, exactly one is required!" % (len(pds))
+        log.errorf("Found %d records in TkSite, exactly one is required - aborting client startup!", len(pds))
         return
     
     record = pds[0]
     siteName = record["SiteName"]
     clientStartupScript = record["ClientStartupScript"]
     
-    print "Running client startup script named <%s> for %s" % (clientStartupScript, siteName)
+    log.infof("Running client startup script named <%s> for %s", clientStartupScript, siteName)
     
     separator=string.rfind(clientStartupScript, ".")
     packagemodule=clientStartupScript[0:separator]
@@ -113,7 +113,7 @@ def client():
 
     eval(clientStartupScript)()
     
-    print "...completed %s.gateway()" % (__name__)
+    log.infof("...completed %s.client()", __name__)
 
 
 
@@ -252,11 +252,12 @@ def updateDatabaseSchema(tagProvider, db):
         dbVersions.append({"versionId": 8, "version": "1.8r0", "filename": "update_1.8r0.sql", "releaseDate": "2021-10-08"})
         dbVersions.append({"versionId": 9, "version": "1.9r0", "filename": "update_1.9r0.sql", "releaseDate": "2022-01-24"})
         dbVersions.append({"versionId": 12, "version": "2.2r0", "filename": "update_2.1r0.sql", "releaseDate": "2022-09-01"})
+        dbVersions.append({"versionId": 13, "version": "2.3r0", "filename": "update_2.3r0.sql", "releaseDate": "2022-09-01"})
         
         projectName = system.util.getProjectName()
-        log.infof("In %s.updateDatabaseSchema()for %s - %s", __name__, projectName, db)
+        log.infof("In %s.updateDatabaseSchema()for project: %s - DB: %s", __name__, projectName, db)
         
-        tagPath = "[%s]/Configuration/common/dbUpdateStrategy" % (tagProvider)
+        tagPath = "[%s]Configuration/Common/dbUpdateStrategy" % (tagProvider)
         exists = system.tag.exists(tagPath)
         if exists:
             strategy = string.upper(readTag(tagPath).value)

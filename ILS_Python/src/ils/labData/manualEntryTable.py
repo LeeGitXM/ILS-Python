@@ -22,20 +22,35 @@ HISTORY_HEADER_ROW = 5
 
 # Everything in this module runs in the client, so the use of loggers isn't too important since nothing will go 
 # to the wrapper log anyway.
-
     
 def internalFrameOpened(rootContainer):
-    log.infof("In %s.internalFormOpened()...", __name__)
+    log.infof("In %s.internalFrameOpened()...", __name__)
+    
+    dateFormat = readTag("Configuration/LabData/dateFormatLong").value
+    rootContainer.formatString = dateFormat
     
     table = rootContainer.getComponent("Power Table")
+    
+    ''' 
+    Set the date format from the configuration tags.  
+    Set the format of the combo box and the Sample Time column of the table to the dateFormatLong.
+    Set the the format of the last values to dateFormat.
+    Setting the date format of a power table column is a little tricky since it can't be bound.  It needs to be done programatically 
+    by setting the column attributes property of the table. 
+    '''
+    
+    dateFormat = readTag("Configuration/LabData/dateFormatLong").value
+    rootContainer.formatString = dateFormat
+    ds = table.columnAttributesData
+    ds = system.dataset.setValue(ds, 2, 1, dateFormat)
+    table.columnAttributesData = ds
+    
     db = getDatabase()
     txt = rootContainer.valueIds
     valueIds = txt.split(",")
-    print "The ids are: ", valueIds
     
     txt = rootContainer.valueNames
     valueNames = txt.split(",")
-    print "ValueNames: ", valueNames
     
     if len(valueIds) < 2:
         print "This only works for 2 or more lab values"
@@ -51,38 +66,47 @@ def internalFrameOpened(rootContainer):
         system.gui.errorBox("Error fetching the unit for this lab data!")
         return
 
-    rootContainer.unitName = unitName
-    print "   using unit %s" % (str(unitName))
+    rootContainer.unitName = unitName    
+    dateFormat = readTag("Configuration/LabData/dateFormat").value
 
-    header = ["Lab Name", "Value", "Upper Limit", "Lower Limit", "Last Value", "Previous Value"]
+    now = system.date.now()
+    header = ["Lab Name", "Value", "Sample Time", "Upper Limit", "Lower Limit", "Last Value", "Previous Value", "ValueId", "StringValue"]
     data = []
     idx = 0
     for valueName in valueNames:
-        row = [valueName, ""]
-        
-        ''' Fetch the validity limits and add to the table dataset '''
+        row = [valueName, "", now]
         valueId = valueIds[idx]
+                    
+        SQL = "select StringValue from LtValue where ValueId = %s" % (str(valueId))
+        stringValue = system.db.runScalarQuery(SQL, database=db)
+        
         upperLimit = ""
         lowerLimit = ""
-        SQL = "select UpperValidityLimit, LowerValidityLimit from LtLimit where ValueId = %s" % (str(valueId))
-        print SQL
-        pds = system.db.runQuery(SQL, database=db)
-        for record in pds:
-            # Validity Limits
-            if record["UpperValidityLimit"] != None:
-                upperLimit = str(record["UpperValidityLimit"])
-    
-            if record["LowerValidityLimit"] != None:
-                lowerLimit = str(record["LowerValidityLimit"])
-                
+            
+        if not(stringValue):
+            log.tracef("...fetching validity limits for a numeric lab value...")
+            
+            ''' Fetch the validity limits and add to the table dataset '''
+            SQL = "select UpperValidityLimit, LowerValidityLimit from LtLimit where ValueId = %s" % (str(valueId))
+            pds = system.db.runQuery(SQL, database=db)
+            for record in pds:
+                # Validity Limits
+                if record["UpperValidityLimit"] != None:
+                    upperLimit = str(record["UpperValidityLimit"])
+        
+                if record["LowerValidityLimit"] != None:
+                    lowerLimit = str(record["LowerValidityLimit"])
+                    
         row.append(upperLimit)
         row.append(lowerLimit)
         
         ''' Fetch the history for each value '''
-        lastVals = fetchRecentValues(valueId, db)
+        lastVals = fetchRecentValues(valueId, stringValue, db, dateFormat)
         
         row.append(lastVals[0])
         row.append(lastVals[1])
+        row.append(valueId)
+        row.append(stringValue)
         
         data.append(row)
         idx = idx + 1
@@ -91,13 +115,26 @@ def internalFrameOpened(rootContainer):
     ds = system.dataset.toDataSet(header, data)
     table.data = ds
 
-
+def updateSampleTime(rootContainer, sampleTime):
+    log.infof("In %s.updateSampleTime() with %s", __name__, str(sampleTime))
+    
+    table = rootContainer.getComponent("Power Table")
+    ds = table.data
+    for row in range(ds.rowCount):
+        print "Row: ", row
+        ds = system.dataset.setValue(ds, row, "Sample Time", sampleTime)
+    table.data = ds
+    
 '''
 Select the recent values for this lab datum
 '''
-def fetchRecentValues(valueId, db):
+def fetchRecentValues(valueId, stringValue, db, dateFormat):
     
-    SQL = "select top 2 SampleTime, RawValue from LtValueView where ValueId = %s order by SampleTime DESC" % (valueId)
+    if stringValue:
+        SQL = "select top 2 SampleTime, RawStringValue as 'RawValue' from LtHistory where ValueId = %s order by SampleTime DESC" % (valueId)
+    else:
+        SQL = "select top 2 SampleTime, RawValue from LtHistory where ValueId = %s order by SampleTime DESC" % (valueId)
+        
     print SQL
     
     pds = system.db.runQuery(SQL, database=db)
@@ -109,8 +146,8 @@ def fetchRecentValues(valueId, db):
             txt = ""
         else:
             sampleTime = record["SampleTime"]
-            sampleTime = system.date.format(sampleTime, "MM/dd HH:mm")
-            txt = "%s @ %s" % (str(record["RawValue"]), sampleTime )
+            sampleTime = system.date.format(sampleTime, dateFormat)
+            txt = "%s at %s" % (str(record["RawValue"]), sampleTime)
         vals.append(txt)
         
     while len(vals) < 2:
@@ -126,10 +163,8 @@ This is called when the operator presses the 'Enter' button on the Manual Entry 
 def enterCallback(rootContainer, db=""):
     log.infof("In %s.enterCallback()", __name__)
     
+    dateFormat = readTag("Configuration/LabData/dateFormat").value
     unitName = rootContainer.unitName
-    
-    txt = rootContainer.valueIds
-    valueIds = txt.split(",")
     
     from ils.config.client import getTagProvider
     provider = getTagProvider()
@@ -153,11 +188,15 @@ def enterCallback(rootContainer, db=""):
         for row in range(0,rows):
             log.infof("Handling row %d", row)
             sampleValue = ds.getValueAt(row,1)
+            sampleTime = ds.getValueAt(row,2)
+            valueId = ds.getValueAt(row, "ValueId")
+            stringValue = ds.getValueAt(row, "StringValue")
+            
             if sampleValue != "":
                 valueName = ds.getValueAt(row, 0)
-                valueId = valueIds[row]
-                upperLimit = ds.getValueAt(row, 2)
-                lowerLimit = ds.getValueAt(row, 3)
+                
+                upperLimit = ds.getValueAt(row, 3)
+                lowerLimit = ds.getValueAt(row, 4)
                 
                 log.infof("Value Id: %s - Value: %s", valueId, sampleValue) 
                 if phase == 1:
@@ -180,7 +219,7 @@ def enterCallback(rootContainer, db=""):
                     
                     ''' For Boo's work I don't believe there is the notion of a grade, not sure how this should be handled generically '''
                     grade = None
-                    insertHistoryValue(valueName, int(valueId), sampleValue, sampleTime, grade, log, db)
+                    insertHistoryValue(valueName, int(valueId), sampleValue, sampleTime, grade, stringValue, log, db)
                     
                     ''' Store the value in the Lab Data UDT memory tags, which are local to Ignition '''
                     from ils.labData.scanner import updateTags
@@ -194,11 +233,13 @@ def enterCallback(rootContainer, db=""):
 
                     ''' Clear the values and refresh the history '''
                     ds = system.dataset.setValue(ds, row, 1, "")
-                    lastVal = ds.getValueAt(row, 4)
-                    sampleTimeTxt = system.date.format(sampleTime, "MM/dd HH:mm")
-                    txt = "%s @ %s" % (str(sampleValue), sampleTimeTxt)
-                    ds = system.dataset.setValue(ds, row, 4, txt)
-                    ds = system.dataset.setValue(ds, row, 5, lastVal)
+                    lastVal = ds.getValueAt(row, 5)
+                    
+                    sampleTimeTxt = system.date.format(sampleTime, dateFormat)
+                    txt = "%s at %s" % (str(sampleValue), sampleTimeTxt)
+                    
+                    ds = system.dataset.setValue(ds, row, 5, txt)
+                    ds = system.dataset.setValue(ds, row, 6, lastVal)
                     
     table.data = ds
 

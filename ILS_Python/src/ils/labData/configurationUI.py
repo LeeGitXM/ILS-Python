@@ -6,6 +6,7 @@ Created on Jun 15, 2015
 import system, string
 from ils.config.client import getTagProvider, getDatabase
 from ils.common.constants import CR
+from ils.common.cast import toBit
 from ils.io.util import readTag, writeTag
 from ils.labData.limits import calcSQCLimits
 from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue, updateLabValueUdt
@@ -38,12 +39,12 @@ def internalFrameOpened(rootContainer):
     # Update the datasets used by the combo boxes in the power tables
     SQL = "Select LookupName LimitType from Lookup where LookupTypeCode = 'RtLimitType' order by LookupName"
     pds = system.db.runQuery(SQL, database=db)
-    log.tracef("Fetched %i SQC Limit Type values...", len(pds))
+    log.tracef("Fetched %d SQC Limit Type values...", len(pds))
     rootContainer.getComponent("Lab Limit Table").limitTypeDataset = pds
     
     SQL = "Select LookupName LimitType from Lookup where LookupTypeCode = 'RtLimitSource' order by LookupName"
     pds = system.db.runQuery(SQL, database=db)
-    log.tracef("Fetched %i SQC Limit Source values...", len(pds))
+    log.tracef("Fetched %d SQC Limit Source values...", len(pds))
     rootContainer.getComponent("Lab Limit Table").limitSourceDataset = pds
 
 
@@ -184,6 +185,8 @@ def insertDataRow(rootContainer):
     
     description = rootContainer.getComponent("description").text
     decimals = rootContainer.getComponent("decimals").intValue
+    stringValue = rootContainer.getComponent("stringValue").selected
+    stringValueBit = toBit(stringValue)
     unitId = rootContainer.unitId
     unitName = rootContainer.unitName
     if unitId == -1 or unitName == "":
@@ -242,11 +245,11 @@ def insertDataRow(rootContainer):
     Insert the base record and then the matching PHD, DCS, or local record
     '''
     if validationProcedure == "":
-        SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals)"\
-            "VALUES ('%s', '%s', %i, %i)" %(newName, description, unitId, decimals)
+        SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, StringValue)"\
+            "VALUES ('%s', '%s', %d, %d, %d)" %(newName, description, unitId, decimals, stringValueBit)
     else:   
-        SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, ValidationProcedure)"\
-            "VALUES ('%s', '%s', %i, %i, '%s')" %(newName, description, unitId, decimals, validationProcedure)
+        SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, StringValue, ValidationProcedure)"\
+            "VALUES ('%s', '%s', %d, %d, %d, '%s')" %(newName, description, unitId, decimals, stringValueBit, validationProcedure)
     print SQL
     valueId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     
@@ -259,7 +262,7 @@ def insertDataRow(rootContainer):
         sql = "INSERT INTO LtDCSValue (ValueId, InterfaceId, ItemId, MinimumSampleIntervalSeconds, SampleTimeConstantMinutes)"\
             "VALUES (%s, %s, '%s', %s, %s)" %(str(valueId), str(interfaceId), str(itemId), str(minimumTimeBetweenSamples), str(sampleTimeOffset))
         system.db.runUpdateQuery(sql, database=db)
-        createDcsTag(unitName, newName, interfaceName, itemId)
+        createDcsTag(unitName, newName, interfaceName, itemId, stringValue)
         
     elif labDataType == "Local":
         interfaceId = rootContainer.getComponent("hdaInterfaceDropdown").selectedValue
@@ -278,7 +281,7 @@ def insertDataRow(rootContainer):
         return False
     
     # Create the UDT
-    createLabValue(unitName, newName)
+    createLabValue(unitName, newName, stringValue)
     return True
     
 
@@ -293,7 +296,7 @@ def update(rootContainer, db):
     log.tracef("...updating %s...", dataType)
     
     if dataType == "PHD":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, PV.AllowManualEntry, I.InterfaceName, PV.ItemId, V.ValidationProcedure "\
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.StringValue, V.UnitId, PV.AllowManualEntry, I.InterfaceName, PV.ItemId, V.ValidationProcedure "\
             "FROM LtValue V, LtPHDValue PV,  LtHDAInterface I "\
             "WHERE V.ValueId = PV.ValueId "\
             "AND PV.InterfaceID = I.InterfaceId "\
@@ -306,7 +309,7 @@ def update(rootContainer, db):
         table.data = pds
         table.updateInProgress = False
     elif dataType == "DCS":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, DS.MinimumSampleIntervalSeconds, DS.SampleTimeConstantMinutes, V.UnitId, DS.AllowManualEntry, "\
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.StringValue, DS.MinimumSampleIntervalSeconds, DS.SampleTimeConstantMinutes, V.UnitId, DS.AllowManualEntry, "\
             " OPC.InterfaceName, DS.ItemId, V.ValidationProcedure "\
             " FROM LtValue V, LtDCSValue DS, LtOpcInterface OPC "\
             " WHERE V.ValueId = DS.ValueId "\
@@ -326,7 +329,7 @@ def update(rootContainer, db):
         table.data = ds
         table.updateInProgress = False
     elif dataType == "Local":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, HDA.InterfaceName, LV.ItemId, V.ValidationProcedure "\
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.StringValue, V.UnitId, HDA.InterfaceName, LV.ItemId, V.ValidationProcedure "\
             " FROM LtValue V INNER JOIN LtLocalValue LV ON V.ValueId = LV.ValueId LEFT OUTER JOIN "\
             " LtHDAInterface HDA ON LV.InterfaceId = HDA.InterfaceId "\
             " WHERE V.UnitId = %i "\
@@ -348,7 +351,7 @@ def validate(rootContainer):
     Since we are coming at this from the databases point of view, validate tags for now.
     '''
     
-    def validateTags(unitName, valueName, dataType, tagProvider, txt):
+    def validateTags(unitName, valueName, dataType, stringValue, tagProvider, txt):
         ''' Now check the lab value tag '''
         
         log.tracef("    ...validating lab data UDT: %s", valueName)
@@ -360,12 +363,12 @@ def validate(rootContainer):
             log.tracef("      ... Lab value UDT exists")
         else:
             log.infof("      --- Creating lab value UDT ---")
-            createLabValue(unitName, valueName)
+            createLabValue(unitName, valueName, stringValue)
             txt = "%s%sCreated lab value UDT for %s" % (txt, CR, valueName)
             
         return txt
 
-    def validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, txt):
+    def validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, stringValue, txt):
         log.tracef("   ...validating DCS lab data: %s - %s - %s", valueName, interfaceName, itemId)
         
         path = "LabData/%s/DCS-Lab-Values" % (unitName)
@@ -376,7 +379,7 @@ def validate(rootContainer):
             log.tracef("      ... OPC tag exists")
         else:
             log.infof("      --- Creating OPC Tag ---")
-            createDcsTag(unitName, valueName, interfaceName, itemId)
+            createDcsTag(unitName, valueName, interfaceName, itemId, stringValue)
             txt = "%s%sCreated OPC tag for %s - %s" % (txt, CR, valueName, itemId)
         return txt
             
@@ -456,8 +459,9 @@ def validate(rootContainer):
             valueName = ds. getValueAt(row, "ValueName")
             interfaceName = ds.getValueAt(row, "InterfaceName")
             itemId =  ds.getValueAt(row, "ItemId")
-            txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
-            txt = validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, txt)
+            stringValue = ds.getValueAt(row, "StringValue")
+            txt = validateTags(unitName, valueName, dataType, stringValue, tagProvider, txt)
+            txt = validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, stringValue, txt)
             txt = validateLimits(unitName, valueName, dataType, db, tagProvider, txt)
         
         if txt == "":
@@ -527,6 +531,9 @@ def dataCellEdited(table, rowIndex, colName, oldValue, newValue):
         SQL = "UPDATE LtValue SET Description = '%s' WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "DisplayDecimals":
         SQL = "UPDATE LtValue SET DisplayDecimals = %i WHERE ValueId = %i " % (newValue, valueId)
+    elif colName == "StringValue":
+        newBitValue = toBit(newValue)
+        SQL = "UPDATE LtValue SET StringValue = %d WHERE ValueId = %i " % (newBitValue, valueId)
     elif colName == "ItemId":
         if dataType == "PHD":
             SQL = "UPDATE LtPHDValue SET ItemId = '%s' WHERE ValueId = %i " % (newValue, valueId)

@@ -56,7 +56,7 @@ def scanner():
     if readTag("[%s]Configuration/LabData/pollingEnabled" % (tagProvider)).value == True:
         lastValueCache, triggerCache, derivedCalculationCache = main(projectName, database, tagProvider, lastValueCache, triggerCache, derivedCalculationCache)
     else:
-        log.tracef("Lab data polling is disabled") 
+        log.tracef("Lab data polling for %s is disabled", projectName) 
 
     if readTag("[%s]Configuration/LabData/pollingEnabledIsolation" % (tagProvider)).value == True:
         lastValueCache, triggerCache, derivedCalculationCache = main(projectName, isolationDatabase, tagProviderIsolation, lastValueCache, triggerCache, derivedCalculationCache)
@@ -105,7 +105,7 @@ def main(projectName, database, tagProvider, lastValueCache, triggerCache, deriv
     writeTags=[]
     writeTagValues=[] 
     lastValueCache, writeTags, writeTagValues = checkForNewDCSLabValues(lastValueCache, database, tagProvider, limits, writeTags, writeTagValues)
-    log.debug("Writing %i new DCS lab values to local lab data tags" % (len(writeTags)))
+    log.debug("Writing %d new DCS lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
     if len(writeTags) > 0:
         newValue = True
@@ -133,6 +133,7 @@ def notifyClients():
 
 
 def tagWriter(tags, vals, mode="synch"):
+    log.tracef("Writing %d tags in %s mode...", len(tags), mode)
     
     if mode == "asynchAll":
         try:
@@ -158,6 +159,7 @@ def tagWriter(tags, vals, mode="synch"):
         for tag in tags:
             val = vals[i]
             try:
+                log.tracef("...writing %s to %s...", str(val), tag)
                 system.tag.writeBlocking([tag], [val])
             except:
                 log.errorf("Error: Lab Data Scanner, (%s.tagWriter): writing %s to %s, mode: %s", __name__, str(val), str(tag), mode)
@@ -455,7 +457,7 @@ def checkForNewDCSLabValues(lastValueCache, database, tagProvider, limits, write
         
     dcsLog.tracef("Checking for new DCS Lab values ... ")    
     
-    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, OPC.InterfaceName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds, "\
+    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, V.StringValue, DV.ItemId, OPC.InterfaceName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds, "\
         "DV.SampleTimeConstantMinutes "\
         "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, LtOpcInterface OPC "\
         "WHERE V.ValueId = DV.ValueId "\
@@ -471,6 +473,7 @@ def checkForNewDCSLabValues(lastValueCache, database, tagProvider, limits, write
         valueId = record["ValueId"]
         interfaceName = record["InterfaceName"]
         itemId = record["ItemId"]
+        stringValue = record["StringValue"]
         post = record["Post"]
         validationProcedure = record["ValidationProcedure"]
         minimumSampleIntervalSeconds  = record["MinimumSampleIntervalSeconds"]
@@ -486,7 +489,7 @@ def checkForNewDCSLabValues(lastValueCache, database, tagProvider, limits, write
             sampleTime = system.date.addMinutes(qv.timestamp, int(-1 * abs(sampleTimeConstantMinutes)))
             new = checkIfValueIsNew(valueName, qv.value, sampleTime, minimumSampleIntervalSeconds, dcsLog)
             if new:
-                lastValueCache, writeTags, writeTagValues = handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, qv.value, sampleTime, \
+                lastValueCache, writeTags, writeTagValues = handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, stringValue, qv.value, sampleTime, \
                      database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, dcsLog)
         else:
             # I don't want to post this to the queue because this is called every minute, and if the same tag is bad for a day 
@@ -521,7 +524,7 @@ def checkForNewPHDLabValues(lastValueCache, database, tagProvider, limits, write
         return new
 
     #----------------------------------------------------------------
-    def checkForANewPHDLabValue(valueName, itemId, valueList, endDate, simulateHDA):
+    def checkForANewPHDLabValue(valueName, itemId, valueList, endDate, stringValue, simulateHDA):
         
         phdLog.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
         
@@ -615,7 +618,7 @@ def checkForNewPHDLabValues(lastValueCache, database, tagProvider, limits, write
             phdLog.trace("...reading lab data values from HDA server: %s..." % (hdaInterface))
 
             # Now select the itemIds that use that interface
-            SQL = "select Post, UnitName, ValueId, ValueName, ItemId, ValidationProcedure "\
+            SQL = "select Post, UnitName, ValueId, ValueName, ItemId, ValidationProcedure, StringValue "\
                 " from LtPHDValueView where InterfaceName = '%s'" % (hdaInterface)
             tagInfoPds = system.db.runQuery(SQL, database) 
             itemIds=[]
@@ -645,12 +648,14 @@ def checkForNewPHDLabValues(lastValueCache, database, tagProvider, limits, write
                 valueId=tagInfo["ValueId"]
                 valueName=tagInfo["ValueName"]
                 itemId=tagInfo["ItemId"]
+                stringValue=tagInfo["StringValue"]
                 validationProcedure=tagInfo["ValidationProcedure"]
 
-                new, rawValue, sampleTime, status = checkForANewPHDLabValue(valueName, itemId, valueList, endDate, simulateHDA)
+                new, rawValue, sampleTime, status = checkForANewPHDLabValue(valueName, itemId, valueList, endDate, stringValue, simulateHDA)
+                
                 if new:
-                    lastValueCache, writeTags, writeTagValues = handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, rawValue, sampleTime, \
-                        database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, phdLog)
+                    lastValueCache, writeTags, writeTagValues = handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, stringValue, rawValue, \
+                        sampleTime, database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, phdLog)
                 elif status != "":
                     writeTags, writeTagValues = handleBadLabValue(unitName, valueName, tagProvider, status, writeTags, writeTagValues)
         
@@ -665,9 +670,8 @@ Handle a new value generically, regardless of its source..  The first thing to d
 # limits then operator intervention is required before storing the value.  If there are no limits or the value is within the validity limits
 # then store the value automatically
 '''
-def handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, 
+def handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, stringValue, rawValue, sampleTime, database, tagProvider, limits, 
                       validationProcedure, writeTags, writeTagValues, log):
-    
     
     limit=limits.get(valueId,None)
     log.trace("...handling a new lab value for %s, checking limits (%s)..." % (valueName, str(limit)))
@@ -740,7 +744,7 @@ def handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, rawVal
       
     else:
         log.tracef("%s passed all limit checks", valueName)
-        storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvider, database)
+        storeValue(valueId, valueName, rawValue, sampleTime, unitName, stringValue, log, tagProvider, database)
         writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, True, writeTags, writeTagValues, log)
             
     # regardless of whether we passed or failed validation, add the value to the cache so we don't process it again
@@ -761,16 +765,16 @@ def handleBadLabValue(unitName, valueName, tagProvider, status, writeTags, write
 # Store a new lab value.  Insert the value into LtHistory and update LtValue with the id of the latest history value.
 # This is called by one of two callers - directly by the scanner if the value is good or if the value is outside the limits and 
 # the operator presses accept 
-def storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvider, database):
+def storeValue(valueId, valueName, rawValue, sampleTime, unitName, stringValue, log, tagProvider, database):
     log.trace("Storing %s - %s - %s - %s ..." % (valueName, str(valueId), str(rawValue), str(sampleTime)))
 
     from ils.common.grade import getGradeForUnit
     grade=getGradeForUnit(unitName, tagProvider)
-    insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, database)
+    insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, stringValue, log, database)
 
 
 # This should be the only place anywhere that inserts into the LtHistory table.
-def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, database=""):
+def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, stringValue, log, database=""):
     log.infof("Inserting %s (%d) %s at %s for grade %s", valueName, valueId, str(rawValue), str(sampleTime), str(grade))
     success = True  # If the row already exists then consider it a success
     insertedRows = 0
@@ -786,7 +790,13 @@ def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, dat
     if sampleTime.find(".") > 0:
         sampleTime = sampleTime[:sampleTime.find(".")]
 
-    SQL = "select count(*) from LtHistory where valueId = %d and RawValue = %s and SampleTime = '%s'" % (valueId, str(rawValue), sampleTime)
+    if stringValue:
+        SQL = "select count(*) from LtHistory where valueId = %d and RawStringValue = '%s' and SampleTime = '%s'" % (valueId, str(rawValue), sampleTime)
+    else:
+        SQL = "select count(*) from LtHistory where valueId = %d and RawValue = %s and SampleTime = '%s'" % (valueId, str(rawValue), sampleTime)
+
+    log.infof("SQL: %s", SQL)
+    
     rows = system.db.runScalarQuery(SQL, database)
     if rows == 0:
         try:
@@ -799,7 +809,10 @@ def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, dat
             
             if historyId == None:
                 log.infof("Inserting a new lab value")
-                SQL = "insert into LtHistory (valueId, RawValue, Grade, SampleTime, ReportTime) values (%d, %s, '%s', '%s', getdate())" % (valueId, str(rawValue), grade, sampleTime)
+                if stringValue:
+                    SQL = "insert into LtHistory (valueId, RawStringValue, Grade, SampleTime, ReportTime) values (%d, '%s', '%s', '%s', getdate())" % (valueId, str(rawValue), grade, sampleTime)
+                else:
+                    SQL = "insert into LtHistory (valueId, RawValue, Grade, SampleTime, ReportTime) values (%d, %s, '%s', '%s', getdate())" % (valueId, str(rawValue), grade, sampleTime)
                 historyId = system.db.runUpdateQuery(SQL, database, getKey=1)
                 log.tracef("...inserted value with history id: %d", historyId)
             else:

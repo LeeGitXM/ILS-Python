@@ -67,6 +67,8 @@ def createTags(tagProvider):
     path = tagProvider + "Configuration/LabData/"
 
     data.append([path, "communicationHealthy", "Boolean", "True"])
+    data.append([path, "dateFormat", "String", "HH:mm MM/dd "])
+    data.append([path, "dateFormatLong", "String", "MM/dd/yy HH:mm a"])
     data.append([path, "dataTransferPermitted", "Boolean", "True"])
     data.append([path, "labDataWriteEnabled", "Boolean", "True"])
     data.append([path, "limitWarningTimeoutSeconds", "Int8", "300"])
